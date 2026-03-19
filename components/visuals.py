@@ -69,14 +69,21 @@ def supply_delta_chart(df: pd.DataFrame, region_label: str = "All regions"):
     if monthly.empty:
         return None
 
-    fig, ax = plt.subplots(figsize=(12, 4))
-    ax.bar(monthly["DATE"], monthly["SUPPLY_DELTA"], width=20)
-    ax.axhline(0, linewidth=1)
-    ax.set_ylim(
-        min(monthly["SUPPLY_DELTA"].min(), 0) * 1.1,
-        max(monthly["SUPPLY_DELTA"].max(), 0) * 1.1 if monthly["SUPPLY_DELTA"].max() != 0 else 1,
+    monthly["DISPLAY_GAP"] = monthly["SCENARIO_GAP"].where(
+        monthly["SUPPLY_DELTA"] != 0,
+        monthly["BASE_GAP"],
     )
-    ax.set_title(f"Supply Delta - {region_label}")
+
+    fig, ax = plt.subplots(figsize=(12, 4))
+    ax.bar(monthly["DATE"], monthly["DISPLAY_GAP"], width=20)
+    ax.axhline(0, linewidth=1)
+
+    y_min = min(monthly["DISPLAY_GAP"].min(), 0)
+    y_max = max(monthly["DISPLAY_GAP"].max(), 0)
+    padding = max((y_max - y_min) * 0.1, 1)
+
+    ax.set_ylim(y_min - padding, y_max + padding)
+    ax.set_title(f"Monthly Gap - {region_label}")
     ax.set_xlabel("Month")
     ax.set_ylabel("Hours")
     ax.grid(True, axis="y", alpha=0.3)
