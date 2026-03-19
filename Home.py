@@ -23,9 +23,7 @@ with col1:
 
     if st.button("Test Snowflake Connection"):
         try:
-            connection_info = get_connection_info()
             st.success("Connected to Snowflake")
-            st.dataframe(connection_info, use_container_width=True)
         except Exception as e:
             st.error(f"Connection failed: {e}")
 
