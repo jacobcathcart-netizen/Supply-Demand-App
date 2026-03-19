@@ -1,21 +1,9 @@
 import streamlit as st
-import snowflake.connector
+
+from data.snowflake import get_connection_info, get_regions_df
 
 
 st.set_page_config(page_title="Staffing Supply and Demand", layout="wide")
-
-
-@st.cache_resource
-def get_snowflake_connection():
-    return snowflake.connector.connect(
-        user=st.secrets["snowflake"]["user"],
-        account=st.secrets["snowflake"]["account"],
-        authenticator=st.secrets["snowflake"].get("authenticator", "externalbrowser"),
-        warehouse=st.secrets["snowflake"]["warehouse"],
-        database=st.secrets["snowflake"]["database"],
-        role=st.secrets["snowflake"]["role"],
-    )
-
 
 st.title("Staffing Supply and Demand")
 st.caption("Use the sidebar to configure a scenario and view results.")
@@ -28,24 +16,26 @@ st.markdown(
 """
 )
 
-st.subheader("Snowflake Connection")
+col1, col2 = st.columns(2)
 
-if st.button("Test Snowflake Connection"):
-    try:
-        conn = get_snowflake_connection()
-        cur = conn.cursor()
+with col1:
+    st.subheader("Snowflake Connection")
+
+    if st.button("Test Snowflake Connection"):
         try:
-            cur.execute("select current_user(), current_role(), current_warehouse()")
-            user, role, warehouse = cur.fetchone()
+            connection_info = get_connection_info()
             st.success("Connected to Snowflake")
-            st.write(
-                {
-                    "user": user,
-                    "role": role,
-                    "warehouse": warehouse,
-                }
-            )
-        finally:
-            cur.close()
-    except Exception as e:
-        st.error(f"Connection failed: {e}")
+            st.dataframe(connection_info, use_container_width=True)
+        except Exception as e:
+            st.error(f"Connection failed: {e}")
+
+with col2:
+    st.subheader("Preview Regions")
+
+    if st.button("Load Regions"):
+        try:
+            regions_df = get_regions_df()
+            st.success("Regions loaded")
+            st.dataframe(regions_df, use_container_width=True)
+        except Exception as e:
+            st.error(f"Region query failed: {e}")
