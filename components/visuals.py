@@ -71,6 +71,11 @@ def supply_delta_chart(df: pd.DataFrame, region_label: str = "All regions"):
 
     fig, ax = plt.subplots(figsize=(12, 4))
     ax.bar(monthly["DATE"], monthly["SUPPLY_DELTA"], width=20)
+    ax.axhline(0, linewidth=1)
+    ax.set_ylim(
+        min(monthly["SUPPLY_DELTA"].min(), 0) * 1.1,
+        max(monthly["SUPPLY_DELTA"].max(), 0) * 1.1 if monthly["SUPPLY_DELTA"].max() != 0 else 1,
+    )
     ax.set_title(f"Supply Delta - {region_label}")
     ax.set_xlabel("Month")
     ax.set_ylabel("Hours")

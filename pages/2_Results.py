@@ -91,12 +91,20 @@ if region_filter != "All":
 if month_filter != "All":
     filtered = filtered[filtered["DATE"].dt.date.astype(str) == month_filter]
 
+project_search = st.text_input("Search CCRID or project name")
+
+project_options = sorted(df["PROJECT_NAME"].dropna().astype(str).unique().tolist())
+selected_projects = st.multiselect("Select projects", options=project_options)
+
 if project_search:
-    search_value = project_search.lower()
+    s = project_search.lower()
     filtered = filtered[
-        filtered["PROJECT_NAME"].astype(str).str.lower().str.contains(search_value, na=False)
+        filtered["PROJECT_NAME"].astype(str).str.lower().str.contains(s, na=False)
         | filtered["CCRID"].astype(str).str.contains(project_search, na=False)
     ]
+
+if selected_projects:
+    filtered = filtered[filtered["PROJECT_NAME"].isin(selected_projects)]
 
 if show_only_gaps:
     filtered = filtered[filtered["SCENARIO_GAP"] < 0]
