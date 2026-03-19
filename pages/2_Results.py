@@ -1,39 +1,80 @@
-import streamlit as st
-
-from logic.scenario import run_scenario
-from components.visuals import (
-    baseline_supply_demand_with_gap,
-    scenario_supply_demand_with_gap,
-    supply_delta_chart,
-)
+import matplotlib.pyplot as plt
+import pandas as pd
 
 
-st.set_page_config(page_title="Results", layout="wide")
-st.title("Scenario Results")
+def _monthly_totals(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return pd.DataFrame()
 
-if not st.session_state.get("inputs_saved", False):
-    st.warning("Save scenario inputs first.")
-    st.stop()
+    monthly = (
+        df.groupby("DATE", as_index=False)[
+            [
+                "BASE_SUPPLY",
+                "SCENARIO_SUPPLY",
+                "DEMAND",
+                "BASE_GAP",
+                "SCENARIO_GAP",
+                "SUPPLY_DELTA",
+            ]
+        ]
+        .sum()
+        .sort_values("DATE")
+    )
+    monthly["DATE"] = pd.to_datetime(monthly["DATE"])
+    return monthly
 
-results_df = run_scenario(
-    regions=st.session_state["selected_regions"],
-    adjustments=st.session_state["adjustments"],
-    start_date=st.session_state["scenario"]["start_date"],
-    end_date=st.session_state["scenario"]["end_date"],
-    adjustment_start_date=st.session_state["adjustment_start_date"],
-    pct_decrease=st.session_state["scenario"]["pct_decrease"],
-    vac_days_per_month=st.session_state["scenario"]["vac_days_per_month"],
-    sick_days_per_month=st.session_state["scenario"]["sick_days_per_month"],
-)
 
-st.subheader("Figure 1: Baseline Supply vs Demand vs Gap")
-baseline_supply_demand_with_gap(results_df)
+def baseline_supply_demand_with_gap(df: pd.DataFrame, region_label: str = "All regions"):
+    monthly = _monthly_totals(df)
+    if monthly.empty:
+        return None
 
-st.subheader("Figure 2: Scenario Supply vs Demand vs Gap")
-scenario_supply_demand_with_gap(results_df)
+    fig, ax = plt.subplots(figsize=(12, 5))
+    ax.plot(monthly["DATE"], monthly["BASE_SUPPLY"], marker="o", label="Baseline Supply")
+    ax.plot(monthly["DATE"], monthly["DEMAND"], marker="o", label="Demand")
+    ax.plot(monthly["DATE"], monthly["BASE_GAP"], marker="o", label="Baseline Gap")
 
-st.subheader("Figure 3: Supply Delta")
-supply_delta_chart(results_df)
+    ax.set_title(f"Baseline Supply vs Demand vs Gap - {region_label}")
+    ax.set_xlabel("Month")
+    ax.set_ylabel("Hours")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.autofmt_xdate()
 
-st.subheader("Scenario Output")
-st.dataframe(results_df, use_container_width=True)
+    return fig
+
+
+def scenario_supply_demand_with_gap(df: pd.DataFrame, region_label: str = "All regions"):
+    monthly = _monthly_totals(df)
+    if monthly.empty:
+        return None
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+    ax.plot(monthly["DATE"], monthly["SCENARIO_SUPPLY"], marker="o", label="Scenario Supply")
+    ax.plot(monthly["DATE"], monthly["DEMAND"], marker="o", label="Demand")
+    ax.plot(monthly["DATE"], monthly["SCENARIO_GAP"], marker="o", label="Scenario Gap")
+
+    ax.set_title(f"Scenario Supply vs Demand vs Gap - {region_label}")
+    ax.set_xlabel("Month")
+    ax.set_ylabel("Hours")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.autofmt_xdate()
+
+    return fig
+
+
+def supply_delta_chart(df: pd.DataFrame, region_label: str = "All regions"):
+    monthly = _monthly_totals(df)
+    if monthly.empty:
+        return None
+
+    fig, ax = plt.subplots(figsize=(12, 4))
+    ax.bar(monthly["DATE"], monthly["SUPPLY_DELTA"], width=20)
+    ax.set_title(f"Supply Delta - {region_label}")
+    ax.set_xlabel("Month")
+    ax.set_ylabel("Hours")
+    ax.grid(True, axis="y", alpha=0.3)
+    fig.autofmt_xdate()
+
+    return fig
