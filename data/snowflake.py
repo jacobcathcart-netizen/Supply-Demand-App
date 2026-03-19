@@ -10,7 +10,6 @@ def get_connection():
         authenticator=st.secrets["snowflake"].get("authenticator", "externalbrowser"),
         warehouse=st.secrets["snowflake"]["warehouse"],
         database=st.secrets["snowflake"]["database"],
-        schema=st.secrets["snowflake"]["schema"],
         role=st.secrets["snowflake"]["role"],
     )
 
