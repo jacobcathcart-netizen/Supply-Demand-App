@@ -91,7 +91,6 @@ if region_filter != "All":
 if month_filter != "All":
     filtered = filtered[filtered["DATE"].dt.date.astype(str) == month_filter]
 
-project_search = st.text_input("Search CCRID or project name")
 
 project_options = sorted(df["PROJECT_NAME"].dropna().astype(str).unique().tolist())
 selected_projects = st.multiselect("Select projects", options=project_options)
