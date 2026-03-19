@@ -1,6 +1,6 @@
 import streamlit as st
 
-from data.snowflake import get_connection_info, get_regions_df
+from data.snowflake import  get_regions_df
 
 
 st.set_page_config(page_title="Staffing Supply and Demand", layout="wide")
