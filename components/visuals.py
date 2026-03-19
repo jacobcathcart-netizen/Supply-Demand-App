@@ -1,14 +1,16 @@
 import streamlit as st
 
+
 def adjustment_inputs(regions, saved_adjustments):
     st.subheader("Headcount adjustments")
     st.caption("Adjustments are applied to scenario headcount starting on the adjustment start date.")
 
-    top_left, top_right = st.columns([3, 1])
+    _, top_right = st.columns([3, 1])
+
     with top_right:
         if st.button("Reset all", help="Set every region adjustment to 0"):
-            for r in regions:
-                st.session_state[f"adj_{r}"] = 0
+            for region in regions:
+                st.session_state[f"adj_{region}"] = 0
 
     adjustments = {}
 
@@ -20,7 +22,9 @@ def adjustment_inputs(regions, saved_adjustments):
 
         adjustments[region] = int(
             st.number_input(
-                region,
+                label=region,
+                min_value=-1000,
+                max_value=1000,
                 step=1,
                 key=widget_key,
             )
