@@ -16,7 +16,7 @@ def get_connection():
 def fetch_df(query: str, params: tuple | None = None) -> pd.DataFrame:
     with get_connection() as conn:
         with conn.cursor() as cur:
-            if params:
+            if params is not None:
                 cur.execute(query, params)
             else:
                 cur.execute(query)
@@ -27,7 +27,12 @@ def fetch_df(query: str, params: tuple | None = None) -> pd.DataFrame:
 def get_connection_info() -> pd.DataFrame:
     return fetch_df(
         """
-        select current_user(), current_role(), current_warehouse()
+        select
+            current_user(),
+            current_role(),
+            current_warehouse(),
+            current_database(),
+            current_schema()
         """
     )
 
