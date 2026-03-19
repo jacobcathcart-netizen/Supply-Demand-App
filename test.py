@@ -6,7 +6,7 @@ conn = snowflake.connector.connect(
     authenticator="externalbrowser",
     warehouse="SA_COMPUTE_WH",
     database="SA",
-    role="SA_OWNER",
+    role="SA_OWNER"
 )
 
 cur = conn.cursor()
@@ -18,6 +18,6 @@ finally:
     conn.close()
     
     
-    
+
     
     
