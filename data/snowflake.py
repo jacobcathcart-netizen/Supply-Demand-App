@@ -25,6 +25,12 @@ def fetch_df(query: str, params: tuple | None = None) -> pd.DataFrame:
             df = cur.fetch_pandas_all()
     return df if df is not None else pd.DataFrame()
 
+def get_connection_info() -> pd.DataFrame:
+    return fetch_df(
+        """
+        select current_user(), current_role(), current_warehouse()
+        """
+    )
 
 def get_supply() -> pd.DataFrame:
     return fetch_df(
