@@ -103,7 +103,7 @@ with left:
             value=st.session_state["adjustment_start_date"] or start_date,
             format="MM/DD/YYYY",
         )
-
+        adjustment_start_date = adjustment_start_date.replace(day=1)
         submitted = st.form_submit_button("Save inputs")
 
     if submitted:
