@@ -104,7 +104,7 @@ def supply_delta_chart(df: pd.DataFrame, region_label: str = "All regions"):
     y_min = min(monthly["DISPLAY_GAP"].min(),monthly["SCENARIO_GAP_CUMSUM"].min() ,0)
     y_max = max(monthly["DISPLAY_GAP"].max(),monthly["SCENARIO_GAP_CUMSUM"].max(), 0)
 
-    padding = max((y_max - y_min) * 0.1, 1)
+    padding = max((y_max - y_min) * 0.2, 1)
 
     ax.set_ylim(y_min - padding, y_max + padding)
     ax.set_title(f"Monthly Gap - {region_label}")
