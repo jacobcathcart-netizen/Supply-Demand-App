@@ -94,7 +94,7 @@ def supply_delta_chart(df: pd.DataFrame, region_label: str = "All regions"):
             label = "Cummulative Backlog",
             color="red",
             markerfacecolor="white",
-            markeredgecolor="red",)
+            markeredgecolor="black",)
     for x, y in zip(monthly["DATE"], monthly["SCENARIO_GAP_CUMSUM"]):
         ax.annotate(
             f"{y:,.0f}",
