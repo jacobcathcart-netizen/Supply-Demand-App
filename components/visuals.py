@@ -88,7 +88,13 @@ def supply_delta_chart(df: pd.DataFrame, region_label: str = "All regions"):
 
     ax.bar(base_months["DATE"], base_months["DISPLAY_GAP"], width=20, label="Baseline Gap")
     ax.bar(adjusted_months["DATE"], adjusted_months["DISPLAY_GAP"], width=20, label="Scenario Gap")
-    ax.plot(monthly["DATE"],monthly["SCENARIO_GAP_CUMSUM"],marker = "o", label = "Cummulative Backlog")
+    ax.plot(monthly["DATE"],
+            monthly["SCENARIO_GAP_CUMSUM"],
+            marker = "o",
+            label = "Cummulative Backlog",
+            color="red",
+            markerfacecolor="white",
+            markeredgecolor="red",)
     for x, y in zip(monthly["DATE"], monthly["SCENARIO_GAP_CUMSUM"]):
         ax.annotate(
             f"{y:,.0f}",
