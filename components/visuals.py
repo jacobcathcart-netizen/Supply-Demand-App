@@ -88,7 +88,7 @@ def supply_delta_chart(df: pd.DataFrame, region_label: str = "All regions"):
 
     ax.bar(base_months["DATE"], base_months["DISPLAY_GAP"], width=20, label="Baseline Gap")
     ax.bar(adjusted_months["DATE"], adjusted_months["DISPLAY_GAP"], width=20, label="Scenario Gap")
-    ax.plot(monthly["DATE"],monthly["SCENARIO_GAP_CUMSUM"],marker = "o", jlabel = "Cummulative Backlog")
+    ax.plot(monthly["DATE"],monthly["SCENARIO_GAP_CUMSUM"],marker = "o", label = "Cummulative Backlog")
     ax.axhline(0, linewidth=1)
 
     y_min = min(monthly["DISPLAY_GAP"].min(), 0)
