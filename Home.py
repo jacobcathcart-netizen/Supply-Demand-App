@@ -13,7 +13,7 @@ col1, col2, col3 = st.columns(3)
 with col1:
     if st.button("Test Connection"):
         try:
-            st.dataframe(get_connection_info(), width="stretch")
+            st.dataframe(get_connection_info(), width="stretch", hide_index=True)
             st.success("Connected to Snowflake")
         except Exception as e:
             st.error(f"Connection failed: {e}")
@@ -21,7 +21,7 @@ with col1:
 with col2:
     if st.button("Load Regions"):
         try:
-            st.dataframe(get_regions_df(), width="stretch")
+            st.dataframe(get_regions_df(), width="stretch", hide_index=True, height="content")
         except Exception as e:
             st.error(f"Region query failed: {e}")
 
