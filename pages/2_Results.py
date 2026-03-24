@@ -131,12 +131,13 @@ st.divider()
 region_label = "All Selected Regions" if region_filter == "All" else region_filter
 st.subheader(f"Monthly supply vs demand - {region_label}")
 st.caption("Gap labels show Supply minus Demand for each month.")
-with st.expander():
+
+with st.expander("Baseline"):
     fig1 = baseline_supply_demand_with_gap(filtered, region_label=region_label)
     if fig1 is not None:
         st.pyplot(fig1, clear_figure=True)
 st.divider()
-with st.expander():
+with st.expander("Scenario"):
     fig2 = scenario_supply_demand_with_gap(filtered, region_label=region_label)
     if fig2 is not None:
         st.pyplot(fig2, clear_figure=True)
@@ -156,7 +157,7 @@ if region_filter == "All":
     )
 else:
     backlog = get_region_backlog(backlog_df, region_filter)
-with st.expander():
+with st.expander("Backlog Summary"):
     fig3 = supply_delta_chart(
         filtered,
         region_label=region_label,
@@ -164,7 +165,7 @@ with st.expander():
     )
     if fig3 is not None:
         st.pyplot(fig3, clear_figure=True)
-    
+
 st.divider()
 
 download_df = filtered.copy()
