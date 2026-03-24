@@ -1,6 +1,15 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 
+def  region_backlog(df: pd.DataFrame) -> pd.DataFrame:
+    rbl = (df.groupby("REGION",as_index=False)[
+            [
+                "COUNT",
+            ]
+        ]
+    .sum()
+    )
+
 
 def _monthly_totals(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:

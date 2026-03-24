@@ -106,7 +106,7 @@ def get_cm_backlog() -> pd.DataFrame:
     return fetch_df(
         """
         select NAME AS REGION, PROJECT_NAME,CCRID,COUNT
-        from sa.supply_demand.corrective_backog
+        from sa.supply_demand.corrective_backlog
         """
     )
 
@@ -118,6 +118,21 @@ def get_pm_backlog() -> pd.DataFrame:
         select NAME AS REGION, PROJECT_NAME,CCRID,COUNT
         from sa.supply_demand.preventive_backlog
         """
+    )
+
+
+@st.cache_data(show_spinner=False, ttl=1800)
+def get_backlog(pm_assumption, cm_assumption) -> pd.DataFrame:
+    return fetch_df(
+        """
+        select NAME AS REGION, PROJECT_NAME,CCRID,COUNT,COUNT * %s
+        from sa.supply_demand.preventive_backlog
+        UNION ALL 
+        select NAME AS REGION, PROJECT_NAME,CCRID,COUNT, count * %s
+        from sa.supply_demand.corrective_backlog
+        
+        """,
+        (pm_assumption, cm_assumption),
     )
 
 
