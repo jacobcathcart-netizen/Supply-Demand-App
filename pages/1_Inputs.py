@@ -93,7 +93,7 @@ with left:
             )
             / 12
         )
-        
+        st.divider()
         cm_assumption = (
             st.number_input(
                 "Hours Per CM Backlog",
