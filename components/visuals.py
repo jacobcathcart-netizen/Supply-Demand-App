@@ -446,8 +446,8 @@ def supply_delta_chart(
     ax1.legend(
         handles1 + handles2 + handles3,
         labels1 + labels2 + labels3,
-        loc="upper center",
-        bbox_to_anchor=(0.5, 1.12),
+        loc=9,
+        bbox_to_anchor=(1.5, 1.12),
         ncol=4,
     )
 
