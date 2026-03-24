@@ -218,12 +218,18 @@ def supply_delta_chart(
         monthly["IS_ADJUSTED"],
         monthly["BASE_GAP"],
     )
+    monthly["NORMALIZED_BACKLOG"] = (
+        monthly["SCENARIO_GAP_CUMSUM"] / monthly["SCENARIO_SUPPLY"]
+    )
 
     base_months = monthly[~monthly["IS_ADJUSTED"]]
     adjusted_months = monthly[monthly["IS_ADJUSTED"]]
 
-    fig, ax1 = plt.subplots(figsize=(12, 5))
+    fig, ax1 = plt.subplots(figsize=(13, 5))
     ax2 = ax1.twinx()
+    ax3 = ax1.twinx()
+
+    ax3.spines["right"].set_position(("outward", 60))
 
     ax1.bar(
         base_months["DATE"],
@@ -249,11 +255,34 @@ def supply_delta_chart(
         markeredgecolor="black",
     )
 
+    ax3.plot(
+        monthly["DATE"],
+        monthly["NORMALIZED_BACKLOG"],
+        marker="s",
+        linestyle="--",
+        label="Normalized Backlog",
+        color="green",
+        markerfacecolor="white",
+        markeredgecolor="black",
+    )
+
     for x, y in zip(monthly["DATE"], monthly["SCENARIO_GAP_CUMSUM"]):
         offset = 8 if y >= 0 else -12
         valign = "bottom" if y >= 0 else "top"
         ax2.annotate(
             f"{y:,.0f}",
+            xy=(x, y),
+            xytext=(0, offset),
+            textcoords="offset points",
+            ha="center",
+            va=valign,
+        )
+
+    for x, y in zip(monthly["DATE"], monthly["NORMALIZED_BACKLOG"]):
+        offset = 8 if y >= 0 else -12
+        valign = "bottom" if y >= 0 else "top"
+        ax3.annotate(
+            f"{y:.2f}",
             xy=(x, y),
             xytext=(0, offset),
             textcoords="offset points",
@@ -271,14 +300,25 @@ def supply_delta_chart(
     backlog_padding = max((backlog_max - backlog_min) * 0.1, 1)
     ax2.set_ylim(backlog_min - backlog_padding, backlog_max + backlog_padding)
 
+    normalized_min = min(monthly["NORMALIZED_BACKLOG"].min(), 0)
+    normalized_max = max(monthly["NORMALIZED_BACKLOG"].max(), 0)
+    normalized_padding = max((normalized_max - normalized_min) * 0.1, 0.1)
+    ax3.set_ylim(normalized_min - normalized_padding, normalized_max + normalized_padding)
+
     ax1.set_title(f"Monthly Gap - {region_label}")
     ax1.set_xlabel("Month")
     ax1.set_ylabel("Gap Hours")
     ax2.set_ylabel("Backlog Hours")
+    ax3.set_ylabel("Normalized Backlog")
 
     handles1, labels1 = ax1.get_legend_handles_labels()
     handles2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(handles1 + handles2, labels1 + labels2, loc="upper right")
+    handles3, labels3 = ax3.get_legend_handles_labels()
+    ax1.legend(
+        handles1 + handles2 + handles3,
+        labels1 + labels2 + labels3,
+        loc="upper right",
+    )
 
     ax1.grid(True, axis="y", alpha=0.3)
     fig.autofmt_xdate()
