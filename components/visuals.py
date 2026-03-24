@@ -448,7 +448,7 @@ def supply_delta_chart(
         labels1 + labels2 + labels3,
         loc=9,
         bbox_to_anchor=(1.5, 1.12),
-        ncol=4,
+        ncol=1,
     )
 
     ax1.grid(True, axis="y", alpha=0.3)
