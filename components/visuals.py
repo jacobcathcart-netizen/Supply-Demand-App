@@ -27,15 +27,17 @@ def _monthly_totals(df: pd.DataFrame, backlog: float = 0) -> pd.DataFrame:
         .sum()
         .sort_values("DATE")
         .assign(
-            BASE_GAP_CUMSUM=lambda d: -pd.to_numeric(
-                d["BASE_GAP"], errors="coerce"
-            ).cumsum(),
+            BASE_GAP_CUMSUM=lambda d: -pd.to_numeric(d["BASE_GAP"], errors="coerce").cumsum(),
             SCENARIO_GAP_CUMSUM=lambda d: backlog
             + (-pd.to_numeric(d["SCENARIO_GAP"], errors="coerce")).cumsum(),
         )
     )
 
     monthly["DATE"] = pd.to_datetime(monthly["DATE"])
+    monthly["BACKLOG_AS_SUPPLY"] = (
+        monthly["SCENARIO_GAP_CUMSUM"] / monthly["SCENARIO_SUPPLY"]
+    )
+
     return monthly
 
 
@@ -149,13 +151,13 @@ def supply_delta_chart(
     )
     ax.plot(
         monthly["DATE"],
-        monthly["SCENARIO_GAP_CUMSUM"],
+        monthly["BACKLOG_AS_SUPPLY"],
         marker="o",
-        label="Cumulative Backlog",
+        label="Backlog / Scenario Supply",
         color="red",
         markerfacecolor="white",
         markeredgecolor="black",
-    )
+)
 
     for x, y in zip(monthly["DATE"], monthly["SCENARIO_GAP_CUMSUM"]):
         offset = 8 if y >= 0 else -12
