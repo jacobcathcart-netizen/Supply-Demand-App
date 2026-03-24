@@ -229,7 +229,7 @@ def supply_delta_chart3(
     ax2 = ax1.twinx()
     ax3 = ax1.twinx()
 
-    ax3.spines["right"].set_position(("outward", 60))
+    #ax3.spines["right"].set_position(("outward", 60))
 
     ax1.bar(
         base_months["DATE"],
@@ -354,7 +354,7 @@ def supply_delta_chart(
     ax2 = ax1.twinx()
     ax3 = ax1.twinx()
 
-    ax3.spines["right"].set_position(("outward", 60))
+    #ax3.spines["right"].set_position(("outward", 60))
 
     ax1.bar(
         base_months["DATE"],
@@ -447,7 +447,7 @@ def supply_delta_chart(
         handles1 + handles2 + handles3,
         labels1 + labels2 + labels3,
         loc=2,
-        bbox_to_anchor=(1.02, 1),
+        bbox_to_anchor=(-1.02, 100),
         ncol=1,
     )
 
