@@ -350,28 +350,23 @@ def supply_delta_chart(
     base_months = monthly[~monthly["IS_ADJUSTED"]]
     adjusted_months = monthly[monthly["IS_ADJUSTED"]]
 
-    fig, ax1 = plt.subplots(figsize=(13, 5.5))
+    fig, ax1 = plt.subplots(figsize=(13, 5))
     ax2 = ax1.twinx()
     ax3 = ax1.twinx()
 
-    ax3.spines["right"].set_position(("outward", 50))
-
-    fig.patch.set_facecolor("white")
-    ax1.set_facecolor("white")
+    ax3.spines["right"].set_position(("outward", 60))
 
     ax1.bar(
         base_months["DATE"],
         base_months["DISPLAY_GAP"],
-        width=18,
+        width=15,
         label="Baseline Gap",
-        alpha=0.8,
     )
     ax1.bar(
         adjusted_months["DATE"],
         adjusted_months["DISPLAY_GAP"],
-        width=18,
+        width=15,
         label="Scenario Gap",
-        alpha=0.8,
     )
     ax1.axhline(0, linewidth=1)
 
@@ -379,8 +374,6 @@ def supply_delta_chart(
         monthly["DATE"],
         monthly["SCENARIO_GAP_CUMSUM"],
         marker="o",
-        linewidth=2,
-        markersize=7,
         label="Cumulative Backlog",
         color="red",
         markerfacecolor="white",
@@ -392,8 +385,6 @@ def supply_delta_chart(
         monthly["NORMALIZED_BACKLOG"],
         marker="s",
         linestyle="--",
-        linewidth=1.8,
-        markersize=6,
         label="Normalized Backlog",
         color="green",
         markerfacecolor="white",
@@ -405,80 +396,60 @@ def supply_delta_chart(
 
     for i in label_idx:
         x = monthly["DATE"].iloc[i]
-        y1 = monthly["SCENARIO_GAP_CUMSUM"].iloc[i]
-        y2 = monthly["NORMALIZED_BACKLOG"].iloc[i]
 
+        y_backlog = monthly["SCENARIO_GAP_CUMSUM"].iloc[i]
         ax2.annotate(
-            f"{y1:,.0f}",
-            xy=(x, y1),
+            f"{y_backlog:,.0f}",
+            xy=(x, y_backlog),
             xytext=(0, 10),
             textcoords="offset points",
             ha="center",
             va="bottom",
-            fontsize=10,
         )
 
+        y_normalized = monthly["NORMALIZED_BACKLOG"].iloc[i]
         ax3.annotate(
-            f"{y2:.2f}",
-            xy=(x, y2),
+            f"{y_normalized:.2f}",
+            xy=(x, y_normalized),
             xytext=(0, -14),
             textcoords="offset points",
             ha="center",
             va="top",
-            fontsize=10,
         )
 
     gap_min = min(monthly["DISPLAY_GAP"].min(), 0)
     gap_max = max(monthly["DISPLAY_GAP"].max(), 0)
-    gap_padding = max((gap_max - gap_min) * 0.25, 20)
+    gap_padding = max((gap_max - gap_min) * 0.2, 1)
     ax1.set_ylim(gap_min - gap_padding, gap_max + gap_padding)
 
-    backlog_min = monthly["SCENARIO_GAP_CUMSUM"].min()
-    backlog_max = monthly["SCENARIO_GAP_CUMSUM"].max()
-    backlog_padding = max((backlog_max - backlog_min) * 0.2, 200)
+    backlog_min = min(monthly["SCENARIO_GAP_CUMSUM"].min(), 0)
+    backlog_max = max(monthly["SCENARIO_GAP_CUMSUM"].max(), 0)
+    backlog_padding = max((backlog_max - backlog_min) * 0.1, 1)
     ax2.set_ylim(backlog_min - backlog_padding, backlog_max + backlog_padding)
 
-    normalized_min = monthly["NORMALIZED_BACKLOG"].min()
-    normalized_max = monthly["NORMALIZED_BACKLOG"].max()
-    normalized_padding = max((normalized_max - normalized_min) * 0.2, 0.3)
-    ax3.set_ylim(
-        normalized_min - normalized_padding,
-        normalized_max + normalized_padding,
-    )
+    normalized_min = min(monthly["NORMALIZED_BACKLOG"].min(), 0)
+    normalized_max = max(monthly["NORMALIZED_BACKLOG"].max(), 0)
+    normalized_padding = max((normalized_max - normalized_min) * 0.1, 0.1)
+    ax3.set_ylim(normalized_min - normalized_padding, normalized_max + normalized_padding)
 
-    ax1.set_title(f"Monthly Gap - {region_label}", fontsize=18, pad=18)
-    ax1.set_xlabel("Month", fontsize=12)
-    ax1.set_ylabel("Gap Hours", fontsize=12)
-
+    ax1.set_title(f"Monthly Gap - {region_label}")
+    ax1.set_xlabel("Month")
+    ax1.set_ylabel("Gap Hours")
     ax2.set_ylabel("")
     ax3.set_ylabel("")
     ax2.set_yticks([])
     ax3.set_yticks([])
 
-    ax2.spines["right"].set_visible(False)
-    ax3.spines["right"].set_visible(False)
-
-    ax1.spines["top"].set_visible(False)
-    ax2.spines["top"].set_visible(False)
-    ax3.spines["top"].set_visible(False)
-
-    ax1.grid(True, axis="y", alpha=0.2, linewidth=0.8)
-    ax1.grid(False, axis="x")
-
     handles1, labels1 = ax1.get_legend_handles_labels()
     handles2, labels2 = ax2.get_legend_handles_labels()
     handles3, labels3 = ax3.get_legend_handles_labels()
-
     ax1.legend(
         handles1 + handles2 + handles3,
         labels1 + labels2 + labels3,
-        loc="upper center",
-        bbox_to_anchor=(0.5, 1.02),
-        ncol=4,
-        frameon=False,
-        fontsize=11,
+        loc="upper right",
     )
 
+    ax1.grid(True, axis="y", alpha=0.3)
     fig.autofmt_xdate()
     fig.tight_layout()
 
