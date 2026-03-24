@@ -26,7 +26,7 @@ def _monthly_totals(df: pd.DataFrame, backlog: float = 0) -> pd.DataFrame:
         .sort_values("DATE")
         .assign(
             BASE_GAP_CUMSUM=lambda d: -d["BASE_GAP"].cumsum(),
-            SCENARIO_GAP_CUMSUM=lambda d: backlog +  (-d["SCENARIO_GAP"]).cumsum(),
+            SCENARIO_GAP_CUMSUM=lambda d: backlog + (-d["SCENARIO_GAP"]).cumsum(),
         )
     )
 
