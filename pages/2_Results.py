@@ -150,4 +150,4 @@ st.caption(f"Rows: {len(filtered):,} of {len(df):,}")
 display_df = filtered.copy()
 display_df["DATE"] = display_df["DATE"].dt.date.astype(str)
 
-st.dataframe(display_df, use_container_width=True, hide_index=True)
+st.dataframe(display_df, width="stretch", hide_index=True)

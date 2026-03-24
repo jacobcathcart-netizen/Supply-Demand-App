@@ -93,17 +93,26 @@ with left:
             )
             / 12
         )
+
         st.divider()
-        cm_assumption = (
-            st.number_input(
-                "Hours Per CM Backlog",
-                min_value=0,
-                max_value=30,
-                value=8,
-                step=1,
-            )
-        )
         
+        # cm and PM hour assumptions
+        
+        cm_assumption = st.number_input(
+            "Hours Per CM Backlog",
+            min_value=0,
+            max_value=30,
+            value=14,
+            step=1,
+        )
+
+        pm_assumption = st.number_input(
+            "Hours Per PM Backlog",
+            min_value=0,
+            max_value=30,
+            value=10,
+            step=1,
+        )
 
         st.divider()
 

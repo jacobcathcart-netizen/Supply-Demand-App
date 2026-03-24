@@ -47,6 +47,7 @@ def get_connection_info() -> pd.DataFrame:
         """
     )
 
+
 # supply
 @st.cache_data(show_spinner=False, ttl=1800)
 def get_supply() -> pd.DataFrame:
@@ -57,18 +58,20 @@ def get_supply() -> pd.DataFrame:
         """
     )
 
-#regions
+
+# regions
 @st.cache_data(show_spinner=False, ttl=1800)
 def get_regions_df() -> pd.DataFrame:
     return fetch_df(
         """
-        select distinct REGION
+        select distinct REGION, COUNT AS HEADCOUNT
         from SA.SUPPLY_DEMAND.SUPPLY
         order by REGION
         """
     )
 
-#demand weight
+
+# demand weight
 @st.cache_data(show_spinner=False, ttl=1800)
 def get_demand_weight() -> pd.DataFrame:
     return fetch_df(
@@ -77,6 +80,7 @@ def get_demand_weight() -> pd.DataFrame:
         from SA.SUPPLY_DEMAND.DEMAND_WEIGHTS
         """
     )
+
 
 # Demand
 @st.cache_data(show_spinner=False, ttl=1800)
@@ -92,14 +96,16 @@ def get_demand() -> pd.DataFrame:
         group by 1, 2, 3
         """
     )
-    
-#Backlog
+
+
+# Backlog
+
 
 @st.cache_data(show_spinner=False, ttl=1800)
 def get_cm_backlog() -> pd.DataFrame:
     return fetch_df(
         """
-        select *
+        select NAME AS REGION, PROJECT_NAME,CCRID,COUNT
         from sa.supply_demand.corrective_backog
         """
     )
@@ -109,12 +115,14 @@ def get_cm_backlog() -> pd.DataFrame:
 def get_pm_backlog() -> pd.DataFrame:
     return fetch_df(
         """
-        select 
+        select NAME AS REGION, PROJECT_NAME,CCRID,COUNT
         from sa.supply_demand.preventive_backlog
         """
     )
 
-#Working days
+
+# Working days
+
 
 @st.cache_data(show_spinner=False, ttl=1800)
 def get_working_days(start_date, end_date) -> pd.DataFrame:
@@ -122,8 +130,8 @@ def get_working_days(start_date, end_date) -> pd.DataFrame:
         """
         with params as (
             select
-                cast(%s as date) as start_date,
-                cast(%s as date) as end_date
+                DATE_TRUNC('month',cast(%s as date)) as start_date,
+                LAST_DAY(cast(%s as date)) as end_date
         ),
         holiday_list as (
             select
