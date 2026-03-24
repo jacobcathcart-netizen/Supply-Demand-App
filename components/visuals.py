@@ -354,8 +354,6 @@ def supply_delta_chart(
     ax2 = ax1.twinx()
     ax3 = ax1.twinx()
 
-    #ax3.spines["right"].set_position(("outward", 60))
-
     ax1.bar(
         base_months["DATE"],
         base_months["DISPLAY_GAP"],
@@ -374,7 +372,7 @@ def supply_delta_chart(
         monthly["DATE"],
         monthly["SCENARIO_GAP_CUMSUM"],
         marker="o",
-        label="Cumulative Backlog",
+        label="Cumulative Backlog (hours)",
         color="red",
         markerfacecolor="white",
         markeredgecolor="black",
@@ -385,7 +383,7 @@ def supply_delta_chart(
         monthly["NORMALIZED_BACKLOG"],
         marker="s",
         linestyle="--",
-        label="Normalized Backlog",
+        label="Normalized Backlog (Squad-Months)",
         color="green",
         markerfacecolor="white",
         markeredgecolor="black",
@@ -432,9 +430,9 @@ def supply_delta_chart(
     normalized_padding = max((normalized_max - normalized_min) * 0.1, 0.1)
     ax3.set_ylim(normalized_min - normalized_padding, normalized_max + normalized_padding)
 
-    ax1.set_title(f"Monthly Gap - {region_label}")
+    ax1.set_title(f"Backlog Summary - {region_label}")
     ax1.set_xlabel("Month")
-    ax1.set_ylabel("Gap Hours")
+    ax1.set_ylabel("Supply Vs Demand Gap (hours)")
     ax2.set_ylabel("")
     ax3.set_ylabel("")
     ax2.set_yticks([])
