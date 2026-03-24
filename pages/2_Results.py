@@ -2,12 +2,13 @@ import streamlit as st
 import pandas as pd
 
 from logic.scenario import run_scenario
+from data.snowflake import get_backlog
 from components.visuals import (
     baseline_supply_demand_with_gap,
     scenario_supply_demand_with_gap,
     supply_delta_chart,
+    get_region_backlog,
 )
-
 
 st.set_page_config(
     page_title="Results", layout="wide", initial_sidebar_state="expanded"
@@ -129,7 +130,17 @@ fig2 = scenario_supply_demand_with_gap(filtered, region_label=region_label)
 if fig2 is not None:
     st.pyplot(fig2, clear_figure=True)
 
-fig3 = supply_delta_chart(filtered, region_label=region_label,backlog=backlog)
+
+if region_filter == "All":
+    backlog = (
+        backlog_df.loc[backlog_df["Region"].isin(regions), "HOUR_BACKLOG"].sum()
+        if not backlog_df.empty
+        else 0
+    )
+else:
+    backlog = get_region_backlog(backlog_df, region_filter)
+
+fig3 = supply_delta_chart(filtered, region_label=region_label, backlog=backlog)
 if fig3 is not None:
     st.pyplot(fig3, clear_figure=True)
 
