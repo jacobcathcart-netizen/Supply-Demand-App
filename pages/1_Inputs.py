@@ -97,11 +97,11 @@ with left:
         cm_assumption = (
             st.number_input(
                 "Hours Per CM Backlog",
-                min_value=0
-                max_value = 30
-                value=int(8)
-            ),
-            step =1
+                min_value=0,
+                max_value=30,
+                value=8,
+                step=1,
+            )
         )
         
 
