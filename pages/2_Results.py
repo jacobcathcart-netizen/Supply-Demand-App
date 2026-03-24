@@ -117,14 +117,17 @@ if show_only_gaps:
     filtered = filtered[filtered["SCENARIO_GAP"] < 0]
 
 k1, k2, k3 = st.columns(3)
-k1.metric("Baseline supply", f"{filtered['BASE_SUPPLY'].sum():,.1f}")
-k2.metric("Scenario supply", f"{filtered['SCENARIO_SUPPLY'].sum():,.1f}")
-k3.metric("Supply delta", f"{filtered['SUPPLY_DELTA'].sum():,.1f}")
+k1.metric("Baseline supply", f"{filtered['BASE_SUPPLY'].sum():,.0f}")
+k2.metric("Scenario supply", f"{filtered['SCENARIO_SUPPLY'].sum():,.0f}")
+k3.metric("Supply delta", f"{filtered['SUPPLY_DELTA'].sum():,.0f}")
 
 k4, k5, k6 = st.columns(3)
-k4.metric("Demand", f"{filtered['DEMAND'].sum():,.1f}")
-k5.metric("Baseline gap", f"{filtered['BASE_GAP'].sum():,.1f}")
-k6.metric("Scenario gap", f"{filtered['SCENARIO_GAP'].sum():,.1f}")
+k4.metric("Demand", f"{filtered['DEMAND'].sum():,.0f}")
+k5.metric("Baseline gap", f"{filtered['BASE_GAP'].sum():,.0f}")
+k6.metric("Scenario gap", f"{filtered['SCENARIO_GAP'].sum():,.0f}")
+
+k7 = st.columns(1)
+k7.metric("Net Backlog change",f"{filtered['NET_BACKLOG']}")
 
 st.divider()
 

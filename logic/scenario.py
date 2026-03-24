@@ -89,7 +89,9 @@ def _build_expanded_supply_frame(
     expanded.loc[
         expanded["MONTH_START"] >= adjustment_start_ts,
         "SCENARIO_HEADCOUNT",
-    ] = expanded["COUNT"] + expanded["ADJUSTMENT"]
+    ] = (
+        expanded["COUNT"] + expanded["ADJUSTMENT"]
+    )
 
     expanded["ABSENCE_DAYS_PER_FTE"] = absence_days
     expanded["NET_BUSINESS_DAYS"] = (
@@ -102,9 +104,7 @@ def _build_expanded_supply_frame(
     expanded["SCENARIO_GROSS_SUPPLY_HOURS"] = (
         expanded["SCENARIO_HEADCOUNT"] * expanded["NET_BUSINESS_DAYS"] * 8
     )
-    expanded["BASE_NET_SUPPLY_HOURS"] = (
-        expanded["BASE_GROSS_SUPPLY_HOURS"] * prod_mult
-    )
+    expanded["BASE_NET_SUPPLY_HOURS"] = expanded["BASE_GROSS_SUPPLY_HOURS"] * prod_mult
     expanded["SCENARIO_NET_SUPPLY_HOURS"] = (
         expanded["SCENARIO_GROSS_SUPPLY_HOURS"] * prod_mult
     )
@@ -161,6 +161,10 @@ def _build_final_output(scenario_alloc, demand):
         final_df["SCENARIO_PROJECT_SUPPLY_HOURS"]
         - final_df["BASE_PROJECT_SUPPLY_HOURS"]
     )
+    final_df["NET_BACKLOG"] = (
+        final_df["SCENARIO_GAP_HOURS"]
+        -final_df["BASE_GAP_HOURS"]
+    )
 
     final_df = final_df.rename(columns={"MONTH_START": "DATE"})
 
@@ -197,6 +201,7 @@ def _build_final_output(scenario_alloc, demand):
         "DEMAND",
         "BASE_GAP",
         "SCENARIO_GAP",
+        "NET_BACKLOG"
     ]
     final_df[numeric_cols] = final_df[numeric_cols].round(1)
 
