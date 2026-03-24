@@ -447,7 +447,7 @@ def supply_delta_chart(
         handles1 + handles2 + handles3,
         labels1 + labels2 + labels3,
         loc=7,
-        bbox_to_anchor=(1.3, .5),
+        bbox_to_anchor=(1.25, .5),
         ncol=1,
     )
 
