@@ -453,6 +453,6 @@ def supply_delta_chart(
 
     ax1.grid(True, axis="y", alpha=0.3)
     fig.autofmt_xdate()
-    fig.tight_layout()
+    fig.tight_layout(rect=[0.22, 0, 1, 1])
 
     return fig
