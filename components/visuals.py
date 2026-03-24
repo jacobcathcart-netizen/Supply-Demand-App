@@ -20,23 +20,25 @@ def _monthly_totals(df: pd.DataFrame) -> pd.DataFrame:
         .sum()
         .sort_values("DATE")
         .assign(
-        BASE_GAP_CUMSUM=lambda d: -d["BASE_GAP"].cumsum(),
-        SCENARIO_GAP_CUMSUM=lambda d: -d["SCENARIO_GAP"].cumsum(),
-    )
+            BASE_GAP_CUMSUM=lambda d: -d["BASE_GAP"].cumsum(),
+            SCENARIO_GAP_CUMSUM=lambda d: -d["SCENARIO_GAP"].cumsum(),
+        )
     )
     monthly["DATE"] = pd.to_datetime(monthly["DATE"])
     return monthly
 
 
-
-
-def baseline_supply_demand_with_gap(df: pd.DataFrame, region_label: str = "All regions"):
+def baseline_supply_demand_with_gap(
+    df: pd.DataFrame, region_label: str = "All regions"
+):
     monthly = _monthly_totals(df)
     if monthly.empty:
         return None
 
     fig, ax = plt.subplots(figsize=(12, 5))
-    ax.plot(monthly["DATE"], monthly["BASE_SUPPLY"], marker="o", label="Baseline Supply")
+    ax.plot(
+        monthly["DATE"], monthly["BASE_SUPPLY"], marker="o", label="Baseline Supply"
+    )
     ax.plot(monthly["DATE"], monthly["DEMAND"], marker="o", label="Demand")
     ax.plot(monthly["DATE"], monthly["BASE_GAP"], marker="o", label="Baseline Gap")
 
@@ -50,13 +52,17 @@ def baseline_supply_demand_with_gap(df: pd.DataFrame, region_label: str = "All r
     return fig
 
 
-def scenario_supply_demand_with_gap(df: pd.DataFrame, region_label: str = "All regions"):
+def scenario_supply_demand_with_gap(
+    df: pd.DataFrame, region_label: str = "All regions"
+):
     monthly = _monthly_totals(df)
     if monthly.empty:
         return None
 
     fig, ax = plt.subplots(figsize=(12, 5))
-    ax.plot(monthly["DATE"], monthly["SCENARIO_SUPPLY"], marker="o", label="Scenario Supply")
+    ax.plot(
+        monthly["DATE"], monthly["SCENARIO_SUPPLY"], marker="o", label="Scenario Supply"
+    )
     ax.plot(monthly["DATE"], monthly["DEMAND"], marker="o", label="Demand")
     ax.plot(monthly["DATE"], monthly["SCENARIO_GAP"], marker="o", label="Scenario Gap")
 
@@ -86,15 +92,24 @@ def supply_delta_chart(df: pd.DataFrame, region_label: str = "All regions"):
     base_months = monthly[~monthly["IS_ADJUSTED"]]
     adjusted_months = monthly[monthly["IS_ADJUSTED"]]
 
-    ax.bar(base_months["DATE"], base_months["DISPLAY_GAP"], width=20, label="Baseline Gap")
-    ax.bar(adjusted_months["DATE"], adjusted_months["DISPLAY_GAP"], width=20, label="Scenario Gap")
-    ax.plot(monthly["DATE"],
-            monthly["SCENARIO_GAP_CUMSUM"],
-            marker = "o",
-            label = "Cummulative Backlog",
-            color="red",
-            markerfacecolor="white",
-            markeredgecolor="black",)
+    ax.bar(
+        base_months["DATE"], base_months["DISPLAY_GAP"], width=15, label="Baseline Gap"
+    )
+    ax.bar(
+        adjusted_months["DATE"],
+        adjusted_months["DISPLAY_GAP"],
+        width=15,
+        label="Scenario Gap",
+    )
+    ax.plot(
+        monthly["DATE"],
+        monthly["SCENARIO_GAP_CUMSUM"],
+        marker="o",
+        label="Cummulative Backlog",
+        color="red",
+        markerfacecolor="white",
+        markeredgecolor="black",
+    )
     for x, y in zip(monthly["DATE"], monthly["SCENARIO_GAP_CUMSUM"]):
         ax.annotate(
             f"{y:,.0f}",
@@ -107,8 +122,8 @@ def supply_delta_chart(df: pd.DataFrame, region_label: str = "All regions"):
 
     ax.axhline(0, linewidth=1)
 
-    y_min = min(monthly["DISPLAY_GAP"].min(),monthly["SCENARIO_GAP_CUMSUM"].min() ,0)
-    y_max = max(monthly["DISPLAY_GAP"].max(),monthly["SCENARIO_GAP_CUMSUM"].max(), 0)
+    y_min = min(monthly["DISPLAY_GAP"].min(), monthly["SCENARIO_GAP_CUMSUM"].min(), 0)
+    y_max = max(monthly["DISPLAY_GAP"].max(), monthly["SCENARIO_GAP_CUMSUM"].max(), 0)
 
     padding = max((y_max - y_min) * 0.2, 1)
 

@@ -20,13 +20,7 @@ def cached_regions():
     regions_df = get_regions_df()
     if regions_df.empty or "REGION" not in regions_df.columns:
         return []
-    return (
-        regions_df["REGION"]
-        .dropna()
-        .astype(str)
-        .sort_values()
-        .tolist()
-    )
+    return regions_df["REGION"].dropna().astype(str).sort_values().tolist()
 
 
 regions_list = cached_regions()
@@ -73,7 +67,12 @@ with left:
                 "Vacation days per FTE per year",
                 min_value=0,
                 max_value=365,
-                value=int(round(st.session_state["scenario"].get("vac_days_per_month", 20 / 12) * 12)),
+                value=int(
+                    round(
+                        st.session_state["scenario"].get("vac_days_per_month", 20 / 12)
+                        * 12
+                    )
+                ),
                 step=1,
             )
             / 12
@@ -84,11 +83,27 @@ with left:
                 "Sick days per FTE per year",
                 min_value=0,
                 max_value=365,
-                value=int(round(st.session_state["scenario"].get("sick_days_per_month", 8 / 12) * 12)),
+                value=int(
+                    round(
+                        st.session_state["scenario"].get("sick_days_per_month", 8 / 12)
+                        * 12
+                    )
+                ),
                 step=1,
             )
             / 12
         )
+        
+        cm_assumption = (
+            st.number_input(
+                "Hours Per CM Backlog",
+                min_value=0
+                max_value = 30
+                value=int(8)
+            ),
+            step =1
+        )
+        
 
         st.divider()
 
@@ -112,7 +127,9 @@ with left:
             st.stop()
 
         if adjustment_start_date < start_date or adjustment_start_date > end_date:
-            st.error("Headcount adjustment start date must be within the scenario date range.")
+            st.error(
+                "Headcount adjustment start date must be within the scenario date range."
+            )
             st.stop()
 
         if not selected_regions:

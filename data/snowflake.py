@@ -47,7 +47,7 @@ def get_connection_info() -> pd.DataFrame:
         """
     )
 
-
+# supply
 @st.cache_data(show_spinner=False, ttl=1800)
 def get_supply() -> pd.DataFrame:
     return fetch_df(
@@ -57,7 +57,7 @@ def get_supply() -> pd.DataFrame:
         """
     )
 
-
+#regions
 @st.cache_data(show_spinner=False, ttl=1800)
 def get_regions_df() -> pd.DataFrame:
     return fetch_df(
@@ -68,7 +68,7 @@ def get_regions_df() -> pd.DataFrame:
         """
     )
 
-
+#demand weight
 @st.cache_data(show_spinner=False, ttl=1800)
 def get_demand_weight() -> pd.DataFrame:
     return fetch_df(
@@ -78,7 +78,7 @@ def get_demand_weight() -> pd.DataFrame:
         """
     )
 
-
+# Demand
 @st.cache_data(show_spinner=False, ttl=1800)
 def get_demand() -> pd.DataFrame:
     return fetch_df(
@@ -92,7 +92,29 @@ def get_demand() -> pd.DataFrame:
         group by 1, 2, 3
         """
     )
+    
+#Backlog
 
+@st.cache_data(show_spinner=False, ttl=1800)
+def get_cm_backlog() -> pd.DataFrame:
+    return fetch_df(
+        """
+        select *
+        from sa.supply_demand.corrective_backog
+        """
+    )
+
+
+@st.cache_data(show_spinner=False, ttl=1800)
+def get_pm_backlog() -> pd.DataFrame:
+    return fetch_df(
+        """
+        select 
+        from sa.supply_demand.preventive_backlog
+        """
+    )
+
+#Working days
 
 @st.cache_data(show_spinner=False, ttl=1800)
 def get_working_days(start_date, end_date) -> pd.DataFrame:

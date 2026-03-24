@@ -1,8 +1,11 @@
 import streamlit as st
 
+
 def adjustment_inputs(regions, saved_adjustments):
     st.subheader("Headcount adjustments")
-    st.caption("Adjustments are applied to scenario headcount starting on the adjustment start date.")
+    st.caption(
+        "Adjustments are applied to scenario headcount starting on the adjustment start date."
+    )
 
     top_left, top_right = st.columns([3, 1])
     with top_right:

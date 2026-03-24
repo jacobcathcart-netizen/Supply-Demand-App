@@ -47,7 +47,9 @@ def run_scenario(
     expanded.loc[
         expanded["MONTH_START"] >= adjustment_start_ts,
         "SCENARIO_HEADCOUNT",
-    ] = expanded["COUNT"] + expanded["ADJUSTMENT"]
+    ] = (
+        expanded["COUNT"] + expanded["ADJUSTMENT"]
+    )
 
     expanded["ABSENCE_DAYS_PER_FTE"] = absence_days
     expanded["NET_BUSINESS_DAYS"] = (

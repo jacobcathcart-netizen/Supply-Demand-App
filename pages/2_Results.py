@@ -9,7 +9,9 @@ from components.visuals import (
 )
 
 
-st.set_page_config(page_title="Results", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(
+    page_title="Results", layout="wide", initial_sidebar_state="expanded"
+)
 st.title("Scenario Results")
 
 scenario_inputs = st.session_state.get("scenario")
@@ -74,9 +76,7 @@ with f1:
     )
 
 with f2:
-    project_options = sorted(
-        df["PROJECT_NAME"].dropna().astype(str).unique().tolist()
-    )
+    project_options = sorted(df["PROJECT_NAME"].dropna().astype(str).unique().tolist())
 
     selected_projects = st.multiselect(
         "Select project name(s)",
@@ -99,8 +99,6 @@ if month_filter != "All":
     filtered = filtered[filtered["DATE"].dt.date.astype(str) == month_filter]
 
 
-
-
 if selected_projects:
     filtered = filtered[filtered["PROJECT_NAME"].isin(selected_projects)]
 
@@ -119,7 +117,7 @@ k6.metric("Scenario gap", f"{filtered['SCENARIO_GAP'].sum():,.1f}")
 
 st.divider()
 
-region_label = "All regions" if region_filter == "All" else region_filter
+region_label = "All Selected regions" if region_filter == "All" else region_filter
 st.subheader(f"Monthly supply vs demand - {region_label}")
 st.caption("Gap labels show Supply minus Demand for each month.")
 
