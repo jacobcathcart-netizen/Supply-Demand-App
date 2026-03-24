@@ -447,12 +447,12 @@ def supply_delta_chart(
         handles1 + handles2 + handles3,
         labels1 + labels2 + labels3,
         loc=2,
-        bbox_to_anchor=(-1.02, 1),
+        bbox_to_anchor=(-.02, 1),
         ncol=1,
     )
 
     ax1.grid(True, axis="y", alpha=0.3)
     fig.autofmt_xdate()
-    fig.tight_layout()
+    fig.tight_layout(rect=[0.22, 0, 1, 1])
 
     return fig
