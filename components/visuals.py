@@ -409,7 +409,7 @@ def supply_delta_chart(
 
         y_normalized = monthly["NORMALIZED_BACKLOG"].iloc[i]
         ax3.annotate(
-            f"{y_normalized:.2f}",
+            f"{y_normalized:.0f}",
             xy=(x, y_normalized),
             xytext=(0, -14),
             textcoords="offset points",
@@ -446,7 +446,9 @@ def supply_delta_chart(
     ax1.legend(
         handles1 + handles2 + handles3,
         labels1 + labels2 + labels3,
-        loc="upper right",
+        loc="upper center",
+        bbox_to_anchor=(0.5, 1.12),
+        ncol=4,
     )
 
     ax1.grid(True, axis="y", alpha=0.3)
