@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import date
 
-from data.snowflake import get_regions_df,get_backlog
+from data.snowflake import get_regions_df, get_backlog
 from components.adjustments import adjustment_inputs
 
 
@@ -95,14 +95,12 @@ with left:
         )
 
         st.divider()
-        
-        # cm and PM hour assumptions
-        
+
         cm_assumption = st.number_input(
             "Hours Per CM Backlog",
             min_value=0,
             max_value=30,
-            value=14,
+            value=int(st.session_state["scenario"].get("cm_assumption", 14)),
             step=1,
         )
 
@@ -110,7 +108,7 @@ with left:
             "Hours Per PM Backlog",
             min_value=0,
             max_value=30,
-            value=10,
+            value=int(st.session_state["scenario"].get("pm_assumption", 10)),
             step=1,
         )
 
@@ -128,6 +126,7 @@ with left:
             format="MM/DD/YYYY",
         )
         adjustment_start_date = adjustment_start_date.replace(day=1)
+
         submitted = st.form_submit_button("Save inputs")
 
     if submitted:
@@ -155,6 +154,8 @@ with left:
             "sick_days_per_month": sick_days_per_month,
             "start_date": start_date,
             "end_date": end_date,
+            "pm_assumption": pm_assumption,
+            "cm_assumption": cm_assumption,
         }
 
         st.success("Inputs saved.")
@@ -176,6 +177,8 @@ with right:
                 "Productivity Decrease": f"{s['pct_decrease'] * 100:.0f}%",
                 "Vacation Days per Month": round(s["vac_days_per_month"], 2),
                 "Sick Days per Month": round(s["sick_days_per_month"], 2),
+                "Hours Per PM Backlog": s["pm_assumption"],
+                "Hours Per CM Backlog": s["cm_assumption"],
             }
         )
 

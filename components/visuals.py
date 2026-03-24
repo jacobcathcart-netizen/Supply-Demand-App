@@ -1,9 +1,5 @@
 import matplotlib.pyplot as plt
-import streamlit as st
 import pandas as pd
-from data.snowflake import get_backlog
-
-regions = st.session_state.get("selected_regions", [])
 
 
 def get_region_backlog(backlog_df: pd.DataFrame, region_label: str) -> float:
@@ -30,15 +26,17 @@ def _monthly_totals(df: pd.DataFrame, backlog: float = 0) -> pd.DataFrame:
         .sort_values("DATE")
         .assign(
             BASE_GAP_CUMSUM=lambda d: -d["BASE_GAP"].cumsum(),
-            SCENARIO_GAP_CUMSUM=lambda d: backlog + -d["SCENARIO_GAP"].cumsum(),
+            SCENARIO_GAP_CUMSUM=lambda d: backlog - d["SCENARIO_GAP"].cumsum(),
         )
     )
+
     monthly["DATE"] = pd.to_datetime(monthly["DATE"])
     return monthly
 
 
 def baseline_supply_demand_with_gap(
-    df: pd.DataFrame, region_label: str = "All regions"
+    df: pd.DataFrame,
+    region_label: str = "All regions",
 ):
     monthly = _monthly_totals(df)
     if monthly.empty:
@@ -46,10 +44,23 @@ def baseline_supply_demand_with_gap(
 
     fig, ax = plt.subplots(figsize=(12, 5))
     ax.plot(
-        monthly["DATE"], monthly["BASE_SUPPLY"], marker="o", label="Baseline Supply"
+        monthly["DATE"],
+        monthly["BASE_SUPPLY"],
+        marker="o",
+        label="Baseline Supply",
     )
-    ax.plot(monthly["DATE"], monthly["DEMAND"], marker="o", label="Demand")
-    ax.plot(monthly["DATE"], monthly["BASE_GAP"], marker="o", label="Baseline Gap")
+    ax.plot(
+        monthly["DATE"],
+        monthly["DEMAND"],
+        marker="o",
+        label="Demand",
+    )
+    ax.plot(
+        monthly["DATE"],
+        monthly["BASE_GAP"],
+        marker="o",
+        label="Baseline Gap",
+    )
 
     ax.set_title(f"Baseline Supply vs Demand vs Gap - {region_label}")
     ax.set_xlabel("Month")
@@ -62,7 +73,8 @@ def baseline_supply_demand_with_gap(
 
 
 def scenario_supply_demand_with_gap(
-    df: pd.DataFrame, region_label: str = "All regions"
+    df: pd.DataFrame,
+    region_label: str = "All regions",
 ):
     monthly = _monthly_totals(df)
     if monthly.empty:
@@ -70,10 +82,23 @@ def scenario_supply_demand_with_gap(
 
     fig, ax = plt.subplots(figsize=(12, 5))
     ax.plot(
-        monthly["DATE"], monthly["SCENARIO_SUPPLY"], marker="o", label="Scenario Supply"
+        monthly["DATE"],
+        monthly["SCENARIO_SUPPLY"],
+        marker="o",
+        label="Scenario Supply",
     )
-    ax.plot(monthly["DATE"], monthly["DEMAND"], marker="o", label="Demand")
-    ax.plot(monthly["DATE"], monthly["SCENARIO_GAP"], marker="o", label="Scenario Gap")
+    ax.plot(
+        monthly["DATE"],
+        monthly["DEMAND"],
+        marker="o",
+        label="Demand",
+    )
+    ax.plot(
+        monthly["DATE"],
+        monthly["SCENARIO_GAP"],
+        marker="o",
+        label="Scenario Gap",
+    )
 
     ax.set_title(f"Scenario Supply vs Demand vs Gap - {region_label}")
     ax.set_xlabel("Month")
@@ -85,11 +110,12 @@ def scenario_supply_demand_with_gap(
     return fig
 
 
-backlog_df = get_backlog()
-
-
-def supply_delta_chart(df: pd.DataFrame, region_label: str = "All regions",backlog: float = 0,):
-    monthly = _monthly_totals(df,backlog=backlog)
+def supply_delta_chart(
+    df: pd.DataFrame,
+    region_label: str = "All regions",
+    backlog: float = 0,
+):
+    monthly = _monthly_totals(df, backlog=backlog)
     if monthly.empty:
         return None
 
@@ -105,7 +131,10 @@ def supply_delta_chart(df: pd.DataFrame, region_label: str = "All regions",backl
     adjusted_months = monthly[monthly["IS_ADJUSTED"]]
 
     ax.bar(
-        base_months["DATE"], base_months["DISPLAY_GAP"], width=15, label="Baseline Gap"
+        base_months["DATE"],
+        base_months["DISPLAY_GAP"],
+        width=15,
+        label="Baseline Gap",
     )
     ax.bar(
         adjusted_months["DATE"],
@@ -117,26 +146,36 @@ def supply_delta_chart(df: pd.DataFrame, region_label: str = "All regions",backl
         monthly["DATE"],
         monthly["SCENARIO_GAP_CUMSUM"],
         marker="o",
-        label="Cummulative Backlog",
+        label="Cumulative Backlog",
         color="red",
         markerfacecolor="white",
         markeredgecolor="black",
     )
+
     for x, y in zip(monthly["DATE"], monthly["SCENARIO_GAP_CUMSUM"]):
+        offset = 8 if y >= 0 else -12
+        valign = "bottom" if y >= 0 else "top"
         ax.annotate(
             f"{y:,.0f}",
             xy=(x, y),
-            xytext=(0, 8),
+            xytext=(0, offset),
             textcoords="offset points",
             ha="center",
-            va="bottom",
+            va=valign,
         )
 
     ax.axhline(0, linewidth=1)
 
-    y_min = min(monthly["DISPLAY_GAP"].min(), monthly["SCENARIO_GAP_CUMSUM"].min(), 0)
-    y_max = max(monthly["DISPLAY_GAP"].max(), monthly["SCENARIO_GAP_CUMSUM"].max(), 0)
-
+    y_min = min(
+        monthly["DISPLAY_GAP"].min(),
+        monthly["SCENARIO_GAP_CUMSUM"].min(),
+        0,
+    )
+    y_max = max(
+        monthly["DISPLAY_GAP"].max(),
+        monthly["SCENARIO_GAP_CUMSUM"].max(),
+        0,
+    )
     padding = max((y_max - y_min) * 0.2, 1)
 
     ax.set_ylim(y_min - padding, y_max + padding)

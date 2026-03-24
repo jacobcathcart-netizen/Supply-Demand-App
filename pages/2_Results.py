@@ -11,7 +11,9 @@ from components.visuals import (
 )
 
 st.set_page_config(
-    page_title="Results", layout="wide", initial_sidebar_state="expanded"
+    page_title="Results",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 st.title("Scenario Results")
 
@@ -48,6 +50,16 @@ def get_results(
     )
 
 
+@st.cache_data(show_spinner=False)
+def load_backlog(pm_assumption, cm_assumption):
+    backlog_df = get_backlog(pm_assumption, cm_assumption).copy()
+    if backlog_df.empty:
+        return backlog_df
+
+    backlog_df.columns = ["Region", "COUNT_BACKLOG", "HOUR_BACKLOG"]
+    return backlog_df
+
+
 with st.spinner("Running scenario..."):
     df = get_results(
         tuple(regions),
@@ -78,7 +90,6 @@ with f1:
 
 with f2:
     project_options = sorted(df["PROJECT_NAME"].dropna().astype(str).unique().tolist())
-
     selected_projects = st.multiselect(
         "Select project name(s)",
         options=project_options,
@@ -99,7 +110,6 @@ if region_filter != "All":
 if month_filter != "All":
     filtered = filtered[filtered["DATE"].dt.date.astype(str) == month_filter]
 
-
 if selected_projects:
     filtered = filtered[filtered["PROJECT_NAME"].isin(selected_projects)]
 
@@ -118,7 +128,7 @@ k6.metric("Scenario gap", f"{filtered['SCENARIO_GAP'].sum():,.1f}")
 
 st.divider()
 
-region_label = "All Selected regions" if region_filter == "All" else region_filter
+region_label = "All Selected Regions" if region_filter == "All" else region_filter
 st.subheader(f"Monthly supply vs demand - {region_label}")
 st.caption("Gap labels show Supply minus Demand for each month.")
 
@@ -130,7 +140,10 @@ fig2 = scenario_supply_demand_with_gap(filtered, region_label=region_label)
 if fig2 is not None:
     st.pyplot(fig2, clear_figure=True)
 
-backlog_df = get_backlog(scenario_inputs["pm_assumption"],scenario_inputs["cm_assumption"])
+backlog_df = load_backlog(
+    scenario_inputs["pm_assumption"],
+    scenario_inputs["cm_assumption"],
+)
 
 if region_filter == "All":
     backlog = (
@@ -141,7 +154,11 @@ if region_filter == "All":
 else:
     backlog = get_region_backlog(backlog_df, region_filter)
 
-fig3 = supply_delta_chart(filtered, region_label=region_label, backlog=backlog)
+fig3 = supply_delta_chart(
+    filtered,
+    region_label=region_label,
+    backlog=backlog,
+)
 if fig3 is not None:
     st.pyplot(fig3, clear_figure=True)
 
