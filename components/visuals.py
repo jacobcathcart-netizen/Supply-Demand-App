@@ -11,6 +11,8 @@ def _monthly_totals(df: pd.DataFrame, backlog: float = 0) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
 
+    backlog = float(backlog)
+
     monthly = (
         df.groupby("DATE", as_index=False)[
             [
@@ -25,8 +27,11 @@ def _monthly_totals(df: pd.DataFrame, backlog: float = 0) -> pd.DataFrame:
         .sum()
         .sort_values("DATE")
         .assign(
-            BASE_GAP_CUMSUM=lambda d: -d["BASE_GAP"].cumsum(),
-            SCENARIO_GAP_CUMSUM=lambda d: backlog + (-d["SCENARIO_GAP"]).cumsum(),
+            BASE_GAP_CUMSUM=lambda d: -pd.to_numeric(
+                d["BASE_GAP"], errors="coerce"
+            ).cumsum(),
+            SCENARIO_GAP_CUMSUM=lambda d: backlog
+            + (-pd.to_numeric(d["SCENARIO_GAP"], errors="coerce")).cumsum(),
         )
     )
 
