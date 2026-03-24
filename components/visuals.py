@@ -409,7 +409,7 @@ def supply_delta_chart(
 
         y_normalized = monthly["NORMALIZED_BACKLOG"].iloc[i]
         ax3.annotate(
-            f"{y_normalized:.0f}",
+            f"{y_normalized:.1f}",
             xy=(x, y_normalized),
             xytext=(0, -14),
             textcoords="offset points",
@@ -453,6 +453,6 @@ def supply_delta_chart(
 
     ax1.grid(True, axis="y", alpha=0.3)
     fig.autofmt_xdate()
-    fig.tight_layout()
+    ##fig.tight_layout()
 
     return fig
