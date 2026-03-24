@@ -308,8 +308,11 @@ def supply_delta_chart(
     ax1.set_title(f"Monthly Gap - {region_label}")
     ax1.set_xlabel("Month")
     ax1.set_ylabel("Gap Hours")
-    ax2.set_ylabel("Backlog Hours")
-    ax3.set_ylabel("Normalized Backlog")
+    ax2.set_ylabel("")
+    ax3.set_ylabel("")
+    ax2.set_yticks([])
+    ax3.set_yticks([])
+    
 
     handles1, labels1 = ax1.get_legend_handles_labels()
     handles2, labels2 = ax2.get_legend_handles_labels()
