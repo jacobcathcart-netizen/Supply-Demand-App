@@ -1,21 +1,17 @@
 import matplotlib.pyplot as plt
 import streamlit as st
 import pandas as pd
-
+from data.snowflake import get_backlog
 
 regions = st.session_state.get("selected_regions", [])
 
-def  region_backlog(df: pd.DataFrame) -> pd.DataFrame:
-    rbl = (df.groupby("REGION",as_index=False)[
-            [
-                "HOURS",
-            ]
-        ]
-    .sum()
-    )
+
+def get_region_backlog(backlog_df: pd.DataFrame, region_label: str) -> float:
+    match = backlog_df.loc[backlog_df["Region"] == region_label, "HOUR_BACKLOG"]
+    return float(match.iloc[0]) if not match.empty else 0.0
 
 
-def _monthly_totals(df: pd.DataFrame) -> pd.DataFrame:
+def _monthly_totals(df: pd.DataFrame, backlog: float = 0) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
 
@@ -34,7 +30,7 @@ def _monthly_totals(df: pd.DataFrame) -> pd.DataFrame:
         .sort_values("DATE")
         .assign(
             BASE_GAP_CUMSUM=lambda d: -d["BASE_GAP"].cumsum(),
-            SCENARIO_GAP_CUMSUM=lambda d: -d["SCENARIO_GAP"].cumsum(),
+            SCENARIO_GAP_CUMSUM=lambda d: -d["SCENARIO_GAP"] +backlog.cumsum(),
         )
     )
     monthly["DATE"] = pd.to_datetime(monthly["DATE"])
@@ -89,8 +85,12 @@ def scenario_supply_demand_with_gap(
     return fig
 
 
-def supply_delta_chart(df: pd.DataFrame, region_label: str = "All regions"):
-    monthly = _monthly_totals(df)
+backlog_df = get_backlog()
+backlog = backlog_df.set_index("REGION")["HOURS"].get(region_label, 0)
+
+
+def supply_delta_chart(df: pd.DataFrame, region_label: str = "All regions",backlog: float = 0,):
+    monthly = _monthly_totals(df,backlog=backlog)
     if monthly.empty:
         return None
 
