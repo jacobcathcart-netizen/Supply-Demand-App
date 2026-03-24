@@ -126,8 +126,10 @@ k4.metric("Demand", f"{filtered['DEMAND'].sum():,.0f}")
 k5.metric("Baseline gap", f"{filtered['BASE_GAP'].sum():,.0f}")
 k6.metric("Scenario gap", f"{filtered['SCENARIO_GAP'].sum():,.0f}")
 
-k7 = st.columns(1)
-k7.metric("Net Backlog change",f"{filtered['NET_BACKLOG']}")
+k7=st.columns(1)
+
+k7.metric("Net Backlog change",f"{filtered['NET_BACKLOG'].sum():,.0f}")
+
 
 st.divider()
 
