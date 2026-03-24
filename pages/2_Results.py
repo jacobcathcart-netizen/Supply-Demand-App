@@ -135,11 +135,11 @@ st.caption("Gap labels show Supply minus Demand for each month.")
 fig1 = baseline_supply_demand_with_gap(filtered, region_label=region_label)
 if fig1 is not None:
     st.pyplot(fig1, clear_figure=True)
-
+st.divider()
 fig2 = scenario_supply_demand_with_gap(filtered, region_label=region_label)
 if fig2 is not None:
     st.pyplot(fig2, clear_figure=True)
-
+st.divider()
 backlog_df = load_backlog(
     scenario_inputs["pm_assumption"],
     scenario_inputs["cm_assumption"],
