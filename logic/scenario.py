@@ -163,7 +163,7 @@ def _build_final_output(scenario_alloc, demand):
     )
     final_df["NET_BACKLOG"] = (
         final_df["SCENARIO_GAP_HOURS"]
-        -final_df["BASE_GAP_HOURS"]
+        - final_df["BASE_GAP_HOURS"]
     )
 
     final_df = final_df.rename(columns={"MONTH_START": "DATE"})
