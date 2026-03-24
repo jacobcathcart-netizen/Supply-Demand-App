@@ -1,10 +1,14 @@
 import matplotlib.pyplot as plt
+import streamlit as st
 import pandas as pd
+
+
+regions = st.session_state.get("selected_regions", [])
 
 def  region_backlog(df: pd.DataFrame) -> pd.DataFrame:
     rbl = (df.groupby("REGION",as_index=False)[
             [
-                "COUNT",
+                "HOURS",
             ]
         ]
     .sum()

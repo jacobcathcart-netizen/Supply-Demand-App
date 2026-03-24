@@ -125,11 +125,14 @@ def get_pm_backlog() -> pd.DataFrame:
 def get_backlog(pm_assumption, cm_assumption) -> pd.DataFrame:
     return fetch_df(
         """
-        select NAME AS REGION, PROJECT_NAME,CCRID,COUNT,COUNT * %s
+        select REGION,SUM(COUNT),SUM(HOURS) FROM (
+        select NAME AS REGION ,COUNT,COUNT * %s AS HOURS
         from sa.supply_demand.preventive_backlog
         UNION ALL 
-        select NAME AS REGION, PROJECT_NAME,CCRID,COUNT, count * %s
+        select NAME AS REGION, COUNT, count * %s AS HOURS
         from sa.supply_demand.corrective_backlog
+        )
+        GROUP BY 1
         
         """,
         (pm_assumption, cm_assumption),

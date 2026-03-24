@@ -180,7 +180,9 @@ with right:
         )
 
 st.divider()
+
 st.dataframe(get_backlog(pm_assumption, cm_assumption))
+
 if st.session_state["inputs_saved"]:
     adjustments = adjustment_inputs(
         st.session_state["selected_regions"],
