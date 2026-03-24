@@ -132,37 +132,55 @@ def supply_delta_chart(
         monthly["BASE_GAP"],
     )
 
-    fig, ax = plt.subplots(figsize=(12, 4))
-
     base_months = monthly[~monthly["IS_ADJUSTED"]]
     adjusted_months = monthly[monthly["IS_ADJUSTED"]]
 
-    ax.bar(
+    fig, (ax1, ax2) = plt.subplots(
+        2,
+        1,
+        figsize=(12, 7),
+        sharex=True,
+        gridspec_kw={"height_ratios": [2, 1]},
+    )
+
+    ax1.bar(
         base_months["DATE"],
         base_months["DISPLAY_GAP"],
         width=15,
         label="Baseline Gap",
     )
-    ax.bar(
+    ax1.bar(
         adjusted_months["DATE"],
         adjusted_months["DISPLAY_GAP"],
         width=15,
         label="Scenario Gap",
     )
-    ax.plot(
+    ax1.axhline(0, linewidth=1)
+
+    gap_min = min(monthly["DISPLAY_GAP"].min(), 0)
+    gap_max = max(monthly["DISPLAY_GAP"].max(), 0)
+    gap_padding = max((gap_max - gap_min) * 0.2, 1)
+
+    ax1.set_ylim(gap_min - gap_padding, gap_max + gap_padding)
+    ax1.set_title(f"Monthly Gap and Backlog - {region_label}")
+    ax1.set_ylabel("Monthly Gap Hours")
+    ax1.legend()
+    ax1.grid(True, axis="y", alpha=0.3)
+
+    ax2.plot(
         monthly["DATE"],
-        monthly["BACKLOG_AS_SUPPLY"],
+        monthly["SCENARIO_GAP_CUMSUM"],
         marker="o",
-        label="Backlog / Scenario Supply",
+        label="Cumulative Backlog",
         color="red",
         markerfacecolor="white",
         markeredgecolor="black",
-)
+    )
 
     for x, y in zip(monthly["DATE"], monthly["SCENARIO_GAP_CUMSUM"]):
         offset = 8 if y >= 0 else -12
         valign = "bottom" if y >= 0 else "top"
-        ax.annotate(
+        ax2.annotate(
             f"{y:,.0f}",
             xy=(x, y),
             xytext=(0, offset),
@@ -171,26 +189,17 @@ def supply_delta_chart(
             va=valign,
         )
 
-    ax.axhline(0, linewidth=1)
+    backlog_min = min(monthly["SCENARIO_GAP_CUMSUM"].min(), 0)
+    backlog_max = max(monthly["SCENARIO_GAP_CUMSUM"].max(), 0)
+    backlog_padding = max((backlog_max - backlog_min) * 0.1, 1)
 
-    y_min = min(
-        monthly["DISPLAY_GAP"].min(),
-        monthly["SCENARIO_GAP_CUMSUM"].min(),
-        0,
-    )
-    y_max = max(
-        monthly["DISPLAY_GAP"].max(),
-        monthly["SCENARIO_GAP_CUMSUM"].max(),
-        0,
-    )
-    padding = max((y_max - y_min) * 0.2, 1)
+    ax2.set_ylim(backlog_min - backlog_padding, backlog_max + backlog_padding)
+    ax2.set_ylabel("Backlog Hours")
+    ax2.set_xlabel("Month")
+    ax2.legend()
+    ax2.grid(True, axis="y", alpha=0.3)
 
-    ax.set_ylim(y_min - padding, y_max + padding)
-    ax.set_title(f"Monthly Gap - {region_label}")
-    ax.set_xlabel("Month")
-    ax.set_ylabel("Hours")
-    ax.legend()
-    ax.grid(True, axis="y", alpha=0.3)
     fig.autofmt_xdate()
+    fig.tight_layout()
 
     return fig
