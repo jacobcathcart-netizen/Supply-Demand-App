@@ -129,7 +129,7 @@ fig2 = scenario_supply_demand_with_gap(filtered, region_label=region_label)
 if fig2 is not None:
     st.pyplot(fig2, clear_figure=True)
 
-fig3 = supply_delta_chart(filtered, region_label=region_label)
+fig3 = supply_delta_chart(filtered, region_label=region_label,backlog=backlog)
 if fig3 is not None:
     st.pyplot(fig3, clear_figure=True)
 

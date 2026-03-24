@@ -86,7 +86,6 @@ def scenario_supply_demand_with_gap(
 
 
 backlog_df = get_backlog()
-backlog = backlog_df.set_index("REGION")["HOURS"].get(region_label, 0)
 
 
 def supply_delta_chart(df: pd.DataFrame, region_label: str = "All regions",backlog: float = 0,):
