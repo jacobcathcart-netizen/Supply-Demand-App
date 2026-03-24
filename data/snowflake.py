@@ -137,9 +137,7 @@ def get_backlog(pm_assumption, cm_assumption) -> pd.DataFrame:
         """,
         (pm_assumption, cm_assumption),
     )
-backlog_df = get_backlog()
 
-backlog_lookup = backlog_df.set_index("Region")["HOUR_BACKLOG"].to_dict()
 
 # Working days
 
