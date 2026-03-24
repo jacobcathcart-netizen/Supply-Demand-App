@@ -180,6 +180,7 @@ def _build_final_output(scenario_alloc, demand):
             "DEMAND_HOURS",
             "BASE_GAP_HOURS",
             "SCENARIO_GAP_HOURS",
+            "NET_BACKLOG"
         ]
     ].copy()
 
