@@ -130,6 +130,7 @@ fig2 = scenario_supply_demand_with_gap(filtered, region_label=region_label)
 if fig2 is not None:
     st.pyplot(fig2, clear_figure=True)
 
+backlog_df = get_backlog()
 
 if region_filter == "All":
     backlog = (
