@@ -9,10 +9,6 @@ from matplotlib.figure import Figure
 
 from config import BAR_WIDTH_DAYS, CHART_FIGSIZE_TALL, CHART_FIGSIZE_WIDE
 
-# ── Helpers ─────────────────────────────────────────────────────────
-
-from config import BAR_WIDTH_DAYS, CHART_FIGSIZE, CHART_FIGSIZE_SMALL
-
 
 # ── Shared helpers ───────────────────────────────────────────────────────────
 

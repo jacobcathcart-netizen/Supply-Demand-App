@@ -13,7 +13,7 @@ import pandas as pd
 import snowflake.connector
 import streamlit as st
 
-from config import CACHE_TTL_SECONDS
+from config import CACHE_TTL_SECONDS, SNOWFLAKE_SCHEMA
 
 # ── Connection management ───────────────────────────────────────────
 
