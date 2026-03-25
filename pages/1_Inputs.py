@@ -5,6 +5,7 @@ from __future__ import annotations
 import streamlit as st
 
 from components.adjustments import adjustment_inputs
+from components.branding import apply_branding
 from config import (
     DEFAULT_CM_HOURS,
     DEFAULT_END_DATE,
@@ -17,6 +18,7 @@ from config import (
 from data.snowflake import get_backlog, get_regions_df
 
 st.set_page_config(page_title="Inputs", layout="wide", initial_sidebar_state="expanded")
+apply_branding()
 st.title("Scenario Inputs")
 
 # ── Session-state defaults ──────────────────────────────────────────

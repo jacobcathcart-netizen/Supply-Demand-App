@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.figure import Figure
 
+from components.branding import GOLD, LIGHT_BLUE, NAVY, ORANGE, TEAL
 from config import BAR_WIDTH_DAYS, CHART_FIGSIZE_WIDE
 
 
@@ -88,14 +89,18 @@ def _line_chart(
         return None
 
     fig, ax = plt.subplots(figsize=CHART_FIGSIZE_WIDE)
-    ax.plot(monthly["DATE"], monthly[supply_col], marker="o", label=f"{title_prefix} Supply")
-    ax.plot(monthly["DATE"], monthly["DEMAND"], marker="o", label="Demand")
-    ax.plot(monthly["DATE"], monthly[gap_col], marker="o", label=f"{title_prefix} Gap")
+    ax.plot(monthly["DATE"], monthly[supply_col], marker="o", color=LIGHT_BLUE,
+            label=f"{title_prefix} Supply")
+    ax.plot(monthly["DATE"], monthly["DEMAND"], marker="o", color=ORANGE,
+            label="Demand")
+    ax.plot(monthly["DATE"], monthly[gap_col], marker="o", color=NAVY,
+            label=f"{title_prefix} Gap")
 
-    ax.set_title(f"{title_prefix} Supply vs Demand vs Gap — {region_label}")
-    ax.set_xlabel("Month")
-    ax.set_ylabel("Hours")
-    ax.legend()
+    ax.set_title(f"{title_prefix} Supply vs Demand vs Gap — {region_label}",
+                 fontfamily="Tahoma", color=NAVY, fontsize=14, fontweight="bold")
+    ax.set_xlabel("Month", fontfamily="Tahoma", color=NAVY)
+    ax.set_ylabel("Hours", fontfamily="Tahoma", color=NAVY)
+    ax.legend(framealpha=0.9)
     ax.grid(True, alpha=0.3)
     return _finalize(fig)
 
@@ -136,20 +141,20 @@ def supply_delta_chart(
 
     # Gap bars
     ax1.bar(base_months["DATE"], base_months["DISPLAY_GAP"],
-            width=BAR_WIDTH_DAYS, label="Baseline Gap")
+            width=BAR_WIDTH_DAYS, color=LIGHT_BLUE, label="Baseline Gap")
     ax1.bar(adjusted_months["DATE"], adjusted_months["DISPLAY_GAP"],
-            width=BAR_WIDTH_DAYS, label="Scenario Gap")
-    ax1.axhline(0, linewidth=1)
+            width=BAR_WIDTH_DAYS, color=TEAL, label="Scenario Gap")
+    ax1.axhline(0, linewidth=1, color=NAVY)
 
     # Cumulative backlog line
     ax2.plot(monthly["DATE"], monthly["SCENARIO_GAP_CUMSUM"],
              marker="o", label="Cumulative Backlog (hours)",
-             color="red", markerfacecolor="white", markeredgecolor="black")
+             color=ORANGE, markerfacecolor="white", markeredgecolor=NAVY)
 
     # Normalised backlog line
     ax3.plot(monthly["DATE"], monthly["NORMALIZED_BACKLOG"],
              marker="s", linestyle="--", label="Normalized Backlog (Squad-Months)",
-             color="green", markerfacecolor="white", markeredgecolor="black")
+             color=GOLD, markerfacecolor="white", markeredgecolor=NAVY)
 
     # Sparse annotations (first, middle, last)
     label_idx = sorted({0, len(monthly) // 2, len(monthly) - 1})
@@ -171,9 +176,10 @@ def supply_delta_chart(
     ax3.set_ylim(*_padded_limits(monthly["NORMALIZED_BACKLOG"], padding_frac=0.1, min_pad=0.1))
 
     # Labels & legend
-    ax1.set_title(f"Backlog Summary — {region_label}")
-    ax1.set_xlabel("Month")
-    ax1.set_ylabel("Supply vs Demand Gap (hours)")
+    ax1.set_title(f"Backlog Summary — {region_label}",
+                  fontfamily="Tahoma", color=NAVY, fontsize=14, fontweight="bold")
+    ax1.set_xlabel("Month", fontfamily="Tahoma", color=NAVY)
+    ax1.set_ylabel("Supply vs Demand Gap (hours)", fontfamily="Tahoma", color=NAVY)
     ax2.set_ylabel("")
     ax3.set_ylabel("")
     ax2.set_yticks([])

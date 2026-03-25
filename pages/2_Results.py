@@ -5,6 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from components.branding import apply_branding
 from components.visuals import (
     baseline_supply_demand_with_gap,
     scenario_supply_demand_with_gap,
@@ -14,6 +15,7 @@ from data.snowflake import get_backlog
 from logic.scenario import run_scenario
 
 st.set_page_config(page_title="Results", layout="wide", initial_sidebar_state="expanded")
+apply_branding()
 st.title("Scenario Results")
 
 # ── Guard: require saved inputs ─────────────────────────────────────

@@ -2,9 +2,11 @@
 
 import streamlit as st
 
+from components.branding import apply_branding
 from data.snowflake import get_connection_info, get_regions_df, reset_connection
 
 st.set_page_config(page_title="Staffing Supply and Demand", layout="wide")
+apply_branding()
 
 st.title("Staffing Supply and Demand")
 st.caption("Use the sidebar to navigate to **Inputs** to configure a scenario, then view **Results**.")
