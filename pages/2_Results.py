@@ -128,6 +128,7 @@ if region_filter == "All":
 else:
     backlog = get_region_backlog(backlog_df, region_filter)
 
+backlog = float(backlog)
 baseline_ending_backlog = backlog - filtered["BASE_GAP"].sum()
 scenario_ending_backlog = backlog - filtered["SCENARIO_GAP"].sum()
 backlog_delta = scenario_ending_backlog - baseline_ending_backlog
