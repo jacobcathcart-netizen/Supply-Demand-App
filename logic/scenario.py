@@ -180,6 +180,9 @@ def _allocate_to_projects(
     )
     return merged
 
+def _prepare_demand() -> pd.DataFrame:
+    demand = get_demand().rename(columns={"HOURS": "DEMAND_HOURS"})
+    return demand[["CCRID", "PROJECT_NAME", "MONTH_NUMBER", "DEMAND_HOURS"]]
 
 def _prepare_demand() -> pd.DataFrame:
     demand = get_demand().copy()
@@ -187,6 +190,9 @@ def _prepare_demand() -> pd.DataFrame:
         ["CCRID", "PROJECT_NAME", "MONTH_NUMBER", "DEMAND_HOURS"]
     ]
 
+def _assemble_output(alloc: pd.DataFrame, demand: pd.DataFrame) -> pd.DataFrame:
+    final = alloc.merge(demand, on=["CCRID", "MONTH_NUMBER"], how="left")
+    final["DEMAND_HOURS"] = final["DEMAND_HOURS"].fillna(0)
 
 def _assemble_output(
     allocated: pd.DataFrame, demand: pd.DataFrame

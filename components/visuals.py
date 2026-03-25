@@ -1,13 +1,6 @@
-"""Matplotlib chart builders for the Results page.
-
-All public functions accept a scenario DataFrame (one row per
-project × region × month) and return a ``matplotlib.figure.Figure``
-or ``None`` when the data is empty.
-"""
+"""Matplotlib chart builders for the Supply & Demand app."""
 
 from __future__ import annotations
-
-from typing import Sequence
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -18,15 +11,19 @@ from config import BAR_WIDTH_DAYS, CHART_FIGSIZE_TALL, CHART_FIGSIZE_WIDE
 
 # ── Helpers ─────────────────────────────────────────────────────────
 
+from config import BAR_WIDTH_DAYS, CHART_FIGSIZE, CHART_FIGSIZE_SMALL
+
+
+# ── Shared helpers ───────────────────────────────────────────────────────────
 
 def get_region_backlog(backlog_df: pd.DataFrame, region_label: str) -> float:
-    """Return the backlog-hours value for a single region, or 0."""
+    """Return the hour-backlog for a single region, or 0 if not found."""
     match = backlog_df.loc[backlog_df["Region"] == region_label, "HOUR_BACKLOG"]
     return float(match.iloc[0]) if not match.empty else 0.0
 
 
-def _monthly_totals(df: pd.DataFrame, backlog: float = 0.0) -> pd.DataFrame:
-    """Aggregate scenario DataFrame to one row per month."""
+def _monthly_totals(df: pd.DataFrame, backlog: float = 0) -> pd.DataFrame:
+    """Aggregate scenario results to monthly level and compute cumulative backlog."""
     if df.empty:
         return pd.DataFrame()
 
@@ -39,9 +36,18 @@ def _monthly_totals(df: pd.DataFrame, backlog: float = 0.0) -> pd.DataFrame:
         "SUPPLY_DELTA",
     ]
     monthly = (
-        df.groupby("DATE", as_index=False)[agg_cols]
+        df.groupby("DATE", as_index=False)[
+            ["BASE_SUPPLY", "SCENARIO_SUPPLY", "DEMAND",
+             "BASE_GAP", "SCENARIO_GAP", "SUPPLY_DELTA"]
+        ]
         .sum()
         .sort_values("DATE")
+        .assign(
+            BASE_GAP_CUMSUM=lambda d: -pd.to_numeric(d["BASE_GAP"], errors="coerce").cumsum(),
+            SCENARIO_GAP_CUMSUM=lambda d: (
+                backlog + (-pd.to_numeric(d["SCENARIO_GAP"], errors="coerce")).cumsum()
+            ),
+        )
     )
     monthly["DATE"] = pd.to_datetime(monthly["DATE"])
 
@@ -58,155 +64,26 @@ def _monthly_totals(df: pd.DataFrame, backlog: float = 0.0) -> pd.DataFrame:
     return monthly
 
 
-def _padded_limits(
-    series: pd.Series, pad_frac: float = 0.2, min_pad: float = 1.0
-) -> tuple[float, float]:
-    """Return (ymin, ymax) with symmetric padding around the data range."""
+def _padded_limits(series: pd.Series, padding_frac: float = 0.2, min_pad: float = 1) -> tuple[float, float]:
+    """Return (ymin, ymax) with symmetric padding around zero-inclusive bounds."""
     lo = min(series.min(), 0)
     hi = max(series.max(), 0)
-    pad = max((hi - lo) * pad_frac, min_pad)
+    pad = max((hi - lo) * padding_frac, min_pad)
     return lo - pad, hi + pad
 
 
 def _split_base_adjusted(monthly: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Split months into base (no adjustment) vs. adjusted."""
+    """Split monthly frame into base (no adjustment) and adjusted rows."""
     monthly["IS_ADJUSTED"] = monthly["SUPPLY_DELTA"] != 0
     monthly["DISPLAY_GAP"] = monthly["SCENARIO_GAP"].where(
-        monthly["IS_ADJUSTED"], monthly["BASE_GAP"]
+        monthly["IS_ADJUSTED"], monthly["BASE_GAP"],
     )
     return monthly[~monthly["IS_ADJUSTED"]], monthly[monthly["IS_ADJUSTED"]]
 
 
-def _draw_gap_bars(
-    ax: Axes,
-    base: pd.DataFrame,
-    adjusted: pd.DataFrame,
-) -> None:
-    """Draw baseline and scenario gap bars on *ax*."""
-    ax.bar(base["DATE"], base["DISPLAY_GAP"], width=BAR_WIDTH_DAYS, label="Baseline Gap")
-    ax.bar(adjusted["DATE"], adjusted["DISPLAY_GAP"], width=BAR_WIDTH_DAYS, label="Scenario Gap")
-    ax.axhline(0, linewidth=1)
+# ── Baseline & scenario line charts ─────────────────────────────────────────
 
-
-def _draw_backlog_line(
-    ax: Axes,
-    monthly: pd.DataFrame,
-    *,
-    label: str = "Cumulative Backlog",
-    annotate_all: bool = True,
-    annotate_indices: Sequence[int] | None = None,
-) -> None:
-    """Plot cumulative backlog on a (possibly twin) axis."""
-    ax.plot(
-        monthly["DATE"],
-        monthly["SCENARIO_GAP_CUMSUM"],
-        marker="o",
-        label=label,
-        color="red",
-        markerfacecolor="white",
-        markeredgecolor="black",
-    )
-    if annotate_all:
-        for x, y in zip(monthly["DATE"], monthly["SCENARIO_GAP_CUMSUM"]):
-            offset = 8 if y >= 0 else -12
-            va = "bottom" if y >= 0 else "top"
-            ax.annotate(
-                f"{y:,.0f}", xy=(x, y), xytext=(0, offset),
-                textcoords="offset points", ha="center", va=va,
-            )
-    elif annotate_indices is not None:
-        for i in annotate_indices:
-            x = monthly["DATE"].iloc[i]
-            y = monthly["SCENARIO_GAP_CUMSUM"].iloc[i]
-            ax.annotate(
-                f"{y:,.0f}", xy=(x, y), xytext=(0, 10),
-                textcoords="offset points", ha="center", va="bottom",
-            )
-
-
-def _draw_normalized_line(
-    ax: Axes,
-    monthly: pd.DataFrame,
-    *,
-    label: str = "Normalized Backlog",
-    annotate_all: bool = True,
-    annotate_indices: Sequence[int] | None = None,
-    fmt: str = ".2f",
-) -> None:
-    """Plot backlog-as-fraction-of-supply on a twin axis."""
-    monthly["NORMALIZED_BACKLOG"] = (
-        monthly["SCENARIO_GAP_CUMSUM"] / monthly["SCENARIO_SUPPLY"]
-    )
-    ax.plot(
-        monthly["DATE"],
-        monthly["NORMALIZED_BACKLOG"],
-        marker="s",
-        linestyle="--",
-        label=label,
-        color="green",
-        markerfacecolor="white",
-        markeredgecolor="black",
-    )
-    if annotate_all:
-        for x, y in zip(monthly["DATE"], monthly["NORMALIZED_BACKLOG"]):
-            offset = 8 if y >= 0 else -12
-            va = "bottom" if y >= 0 else "top"
-            ax.annotate(
-                f"{y:{fmt}}", xy=(x, y), xytext=(0, offset),
-                textcoords="offset points", ha="center", va=va,
-            )
-    elif annotate_indices is not None:
-        for i in annotate_indices:
-            x = monthly["DATE"].iloc[i]
-            y = monthly["NORMALIZED_BACKLOG"].iloc[i]
-            ax.annotate(
-                f"{y:.1f}", xy=(x, y), xytext=(0, -14),
-                textcoords="offset points", ha="center", va="top",
-            )
-
-
-def _key_label_indices(n: int) -> list[int]:
-    """Return indices for first, middle, and last items (deduplicated)."""
-    indices = [0, n // 2, n - 1]
-    return sorted(set(i for i in indices if 0 <= i < n))
-
-
-def _finalize(fig: Figure) -> Figure:
-    """Common formatting applied to every chart."""
-    fig.autofmt_xdate()
-    fig.tight_layout()
-    return fig
-
-
-# ── Public chart functions ──────────────────────────────────────────
-
-
-def baseline_supply_demand_with_gap(
-    df: pd.DataFrame,
-    region_label: str = "All regions",
-) -> Figure | None:
-    """Line chart: baseline supply, demand, and gap over time."""
-    monthly = _monthly_totals(df)
-    if monthly.empty:
-        return None
-
-    fig, ax = plt.subplots(figsize=CHART_FIGSIZE_WIDE)
-    for col, label in [
-        ("BASE_SUPPLY", "Baseline Supply"),
-        ("DEMAND", "Demand"),
-        ("BASE_GAP", "Baseline Gap"),
-    ]:
-        ax.plot(monthly["DATE"], monthly[col], marker="o", label=label)
-
-    ax.set_title(f"Baseline Supply vs Demand vs Gap — {region_label}")
-    ax.set_xlabel("Month")
-    ax.set_ylabel("Hours")
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-    return _finalize(fig)
-
-
-def scenario_supply_demand_with_gap(
+def _line_chart(
     df: pd.DataFrame,
     region_label: str = "All regions",
 ) -> Figure | None:

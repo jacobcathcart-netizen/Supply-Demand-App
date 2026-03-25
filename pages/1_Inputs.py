@@ -58,10 +58,12 @@ def _saved(key: str, default: object = None) -> object:
 
 # ── Layout ──────────────────────────────────────────────────────────
 
+# ── Layout ───────────────────────────────────────────────────────────────────
 left, right = st.columns([1.2, 1])
 
 with left:
     st.subheader("Scenario settings")
+    s = st.session_state[SS_SCENARIO]
 
     with st.form("inputs_form"):
         scenario_name = st.text_input(
@@ -91,8 +93,7 @@ with left:
                 max_value=100,
                 value=int(_saved("pct_decrease", DEFAULT_PCT_DECREASE) * 100),
                 step=1,
-            )
-            / 100
+            ) / 100
         )
 
         vac_days_per_month = (
@@ -106,8 +107,7 @@ with left:
                     )
                 ),
                 step=1,
-            )
-            / 12
+            ) / 12
         )
 
         sick_days_per_month = (
@@ -121,8 +121,7 @@ with left:
                     )
                 ),
                 step=1,
-            )
-            / 12
+            ) / 12
         )
 
         st.divider()
@@ -148,12 +147,12 @@ with left:
         selected_regions = st.multiselect(
             "Regions",
             options=regions_list,
-            default=st.session_state["selected_regions"],
+            default=st.session_state[SS_REGIONS],
         )
 
         adjustment_start_date = st.date_input(
             "Headcount adjustment start date",
-            value=st.session_state["adjustment_start_date"] or start_date,
+            value=st.session_state[SS_ADJ_START] or start_date,
             format="MM/DD/YYYY",
         )
         adjustment_start_date = adjustment_start_date.replace(day=1)
@@ -199,7 +198,7 @@ with left:
 with right:
     st.subheader("Scenario summary")
 
-    if not st.session_state["inputs_saved"]:
+    if not st.session_state[SS_INPUTS_SAVED]:
         st.info("Save inputs to enable adjustments and results.")
     else:
         s = st.session_state["scenario"]
@@ -227,12 +226,12 @@ try:
 except Exception as exc:
     st.warning(f"Could not load backlog data: {exc}")
 
-if st.session_state["inputs_saved"]:
+if st.session_state[SS_INPUTS_SAVED]:
     adjustments = adjustment_inputs(
-        st.session_state["selected_regions"],
-        st.session_state["adjustments"],
+        st.session_state[SS_REGIONS],
+        st.session_state[SS_ADJUSTMENTS],
     )
-    st.session_state["adjustments"] = adjustments
+    st.session_state[SS_ADJUSTMENTS] = adjustments
 
     c1, c2 = st.columns([1, 3])
     with c1:
