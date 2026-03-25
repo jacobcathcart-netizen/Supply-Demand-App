@@ -105,6 +105,27 @@ if selected_projects:
 if show_only_gaps:
     filtered = filtered[filtered["SCENARIO_GAP"] < 0]
 
+# ── Backlog (needed for metrics + charts) ────────────────────────────────────
+
+backlog_df = load_backlog(
+    scenario_inputs["pm_assumption"],
+    scenario_inputs["cm_assumption"],
+)
+
+if region_filter == "All":
+    backlog = (
+        backlog_df.loc[backlog_df["Region"].isin(regions), "HOUR_BACKLOG"].sum()
+        if not backlog_df.empty else 0
+    )
+else:
+    backlog = get_region_backlog(backlog_df, region_filter)
+
+# Ending backlog = initial backlog − cumulative gap over the period
+# A positive gap (supply > demand) reduces backlog; negative increases it.
+baseline_ending_backlog = backlog - filtered["BASE_GAP"].sum()
+scenario_ending_backlog = backlog - filtered["SCENARIO_GAP"].sum()
+backlog_delta = scenario_ending_backlog - baseline_ending_backlog
+
 # ── Metrics ──────────────────────────────────────────────────────────────────
 
 k1, k2, k3 = st.columns(3)
@@ -117,6 +138,16 @@ k4.metric("Demand", f"{filtered['DEMAND'].sum():,.0f}")
 k5.metric("Baseline gap", f"{filtered['BASE_GAP'].sum():,.0f}")
 k6.metric("Scenario gap", f"{filtered['SCENARIO_GAP'].sum():,.0f}")
 k7.metric("Net Backlog change", f"{filtered['NET_BACKLOG'].sum():,.0f}")
+
+k8, k9, k10 = st.columns(3)
+k8.metric("Baseline ending backlog", f"{baseline_ending_backlog:,.0f}")
+k9.metric("Scenario ending backlog", f"{scenario_ending_backlog:,.0f}")
+k10.metric(
+    "Ending backlog delta",
+    f"{backlog_delta:,.0f}",
+    delta=f"{backlog_delta:,.0f}",
+    delta_color="inverse",
+)
 
 # ── Charts ───────────────────────────────────────────────────────────────────
 st.divider()
@@ -138,19 +169,6 @@ with st.expander("Scenario"):
         st.pyplot(fig2, clear_figure=True)
 
 st.divider()
-
-backlog_df = load_backlog(
-    scenario_inputs["pm_assumption"],
-    scenario_inputs["cm_assumption"],
-)
-
-if region_filter == "All":
-    backlog = (
-        backlog_df.loc[backlog_df["Region"].isin(regions), "HOUR_BACKLOG"].sum()
-        if not backlog_df.empty else 0
-    )
-else:
-    backlog = get_region_backlog(backlog_df, region_filter)
 
 with st.expander("Backlog Summary"):
     fig3 = supply_delta_chart(filtered, region_label=region_label, backlog=backlog)
