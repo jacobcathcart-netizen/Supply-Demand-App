@@ -6,8 +6,10 @@ from pathlib import Path
 
 import streamlit as st
 
-# ── Logo path ────────────────────────────────────────────────────────
-_LOGO_PATH = Path(__file__).resolve().parent.parent / "assets" / "logo.jpg"
+# ── Asset paths ──────────────────────────────────────────────────────
+_ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
+_LOGO_PATH = _ASSETS_DIR / "logo.jpg"
+HERO_IMAGE_PATH = _ASSETS_DIR / "solar_farm.jpg"
 
 # ── CCR Brand Colors ─────────────────────────────────────────────────
 NAVY = "#0A3370"

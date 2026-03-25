@@ -4,6 +4,7 @@ import streamlit as st
 
 from components.branding import (
     GRAY_600,
+    HERO_IMAGE_PATH,
     LIGHT_BLUE,
     NAVY,
     TEAL,
@@ -20,13 +21,19 @@ st.set_page_config(
 )
 apply_branding()
 
-# ── Hero section ──────────────────────────────────────────────────────
+# ── Hero banner ──────────────────────────────────────────────────────
+
+if HERO_IMAGE_PATH.exists():
+    st.image(
+        str(HERO_IMAGE_PATH),
+        use_container_width=True,
+    )
 
 st.markdown(
     f"""
-    <div style="padding:2rem 0 1rem;">
+    <div style="padding:1.5rem 0 1rem;">
         <h1 style="border-bottom:none;margin-bottom:0.5rem;font-size:2.2rem;">
-            Staffing Supply & Demand
+            Staffing Supply &amp; Demand
         </h1>
         <p style="color:{GRAY_600};font-size:1.05rem;font-family:Tahoma,sans-serif;
                   margin:0;max-width:640px;">

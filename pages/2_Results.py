@@ -7,6 +7,7 @@ import streamlit as st
 
 from components.branding import (
     GRAY_600,
+    HERO_IMAGE_PATH,
     LIGHT_BLUE,
     NAVY,
     TEAL,
@@ -283,3 +284,9 @@ with st.container(border=True):
         )
 
     st.dataframe(display_df, hide_index=True, use_container_width=True)
+
+# ── Footer image ─────────────────────────────────────────────────────
+
+if HERO_IMAGE_PATH.exists():
+    st.divider()
+    st.image(str(HERO_IMAGE_PATH), use_container_width=True)
