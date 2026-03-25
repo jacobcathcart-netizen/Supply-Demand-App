@@ -5,7 +5,14 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from components.branding import apply_branding
+from components.branding import (
+    GRAY_600,
+    LIGHT_BLUE,
+    NAVY,
+    TEAL,
+    apply_branding,
+    section_header,
+)
 from components.visuals import (
     baseline_supply_demand_with_gap,
     scenario_supply_demand_with_gap,
@@ -14,8 +21,32 @@ from components.visuals import (
 from data.snowflake import get_backlog
 from logic.scenario import run_scenario
 
-st.set_page_config(page_title="Results", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(
+    page_title="Results | CCR",
+    page_icon="⚡",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 apply_branding()
+
+# ── Sidebar branding ──────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown(
+        """
+        <div style="text-align:center;padding:0.5rem 0 1.5rem;">
+            <div style="font-size:1.5rem;font-weight:700;color:white;
+                        font-family:Tahoma,sans-serif;letter-spacing:-0.02em;">
+                ⚡ CCR
+            </div>
+            <div style="font-size:0.75rem;color:rgba(255,255,255,0.6);
+                        font-family:Tahoma,sans-serif;margin-top:0.15rem;">
+                Workforce Planning
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 st.title("Scenario Results")
 
 # ── Guard: require saved inputs ─────────────────────────────────────
@@ -26,7 +57,23 @@ adjustments: dict[str, int] = st.session_state.get("adjustments", {})
 adjustment_start_date = st.session_state.get("adjustment_start_date")
 
 if not scenario_inputs or not regions or adjustment_start_date is None:
-    st.warning("Go to **Inputs**, save your settings, and click **Run scenario**.")
+    st.markdown(
+        f"""
+        <div style="background:#F8F9FC;border:1px dashed #D9DDE5;border-radius:12px;
+                    padding:3rem 2rem;text-align:center;margin-top:2rem;">
+            <div style="font-size:2.5rem;margin-bottom:1rem;">📊</div>
+            <div style="font-weight:600;color:{NAVY};font-family:Tahoma,sans-serif;
+                        font-size:1.1rem;margin-bottom:0.5rem;">
+                No Scenario Loaded
+            </div>
+            <div style="color:{GRAY_600};font-size:0.9rem;font-family:Tahoma,sans-serif;">
+                Go to <strong>Inputs</strong>, save your settings, and click
+                <strong>Run Scenario</strong>.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     st.stop()
 
 
@@ -85,32 +132,44 @@ if df.empty:
 
 df["DATE"] = pd.to_datetime(df["DATE"])
 
-# ── Filters ─────────────────────────────────────────────────────────
+# ── Filter bar ──────────────────────────────────────────────────────
 
-st.divider()
+with st.container(border=True):
+    st.markdown(
+        f"""
+        <div style="font-weight:600;color:{NAVY};font-family:Tahoma,sans-serif;
+                    font-size:0.9rem;margin-bottom:0.5rem;">
+            🔍 Filters
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    f1, f2, f3, f4 = st.columns([1, 2, 1, 1])
 
-f1, f2, f3, f4 = st.columns([1, 2, 1, 1])
+    with f1:
+        region_options = ["All"] + sorted(df["REGION"].dropna().unique().tolist())
+        region_filter = st.selectbox("Region", region_options, label_visibility="collapsed")
 
-with f1:
-    region_options = ["All"] + sorted(df["REGION"].dropna().unique().tolist())
-    region_filter = st.selectbox("Region", region_options)
+    with f2:
+        project_options = sorted(df["PROJECT_NAME"].dropna().unique().tolist())
+        selected_projects = st.multiselect(
+            "Project(s)", options=project_options, placeholder="All projects"
+        )
 
-with f2:
-    project_options = sorted(df["PROJECT_NAME"].dropna().unique().tolist())
-    selected_projects = st.multiselect("Project(s)", options=project_options)
+    with f3:
+        month_options = ["All Months"] + sorted(
+            df["DATE"].dt.strftime("%b %Y").unique().tolist()
+        )
+        month_filter = st.selectbox("Month", month_options, label_visibility="collapsed")
 
-with f3:
-    month_options = ["All"] + sorted(df["DATE"].dt.date.astype(str).unique().tolist())
-    month_filter = st.selectbox("Month", month_options)
-
-with f4:
-    show_only_gaps = st.checkbox("Only negative scenario gaps", value=False)
+    with f4:
+        show_only_gaps = st.checkbox("Negative gaps only", value=False)
 
 filtered = df.copy()
 if region_filter != "All":
     filtered = filtered[filtered["REGION"] == region_filter]
-if month_filter != "All":
-    filtered = filtered[filtered["DATE"].dt.date.astype(str) == month_filter]
+if month_filter != "All Months":
+    filtered = filtered[filtered["DATE"].dt.strftime("%b %Y") == month_filter]
 if selected_projects:
     filtered = filtered[filtered["PROJECT_NAME"].isin(selected_projects)]
 if show_only_gaps:
@@ -127,7 +186,9 @@ if not filtered_backlog.empty:
     if region_filter != "All":
         filtered_backlog = filtered_backlog[filtered_backlog["REGION"] == region_filter]
     if selected_projects:
-        filtered_backlog = filtered_backlog[filtered_backlog["PROJECT_NAME"].isin(selected_projects)]
+        filtered_backlog = filtered_backlog[
+            filtered_backlog["PROJECT_NAME"].isin(selected_projects)
+        ]
 
 backlog = float(filtered_backlog["HOUR_BACKLOG"].sum()) if not filtered_backlog.empty else 0.0
 
@@ -140,71 +201,95 @@ backlog_delta = scenario_ending_backlog - baseline_ending_backlog
 supply_delta = filtered["SUPPLY_DELTA"].sum()
 gap_delta = filtered["SCENARIO_GAP"].sum() - filtered["BASE_GAP"].sum()
 
+# Row 1 — Supply & Demand
 with st.container(border=True):
-    st.subheader("Supply and Demand Metrics")
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Baseline supply", f"{filtered['BASE_SUPPLY'].sum():,.0f}")
-    col2.metric("Scenario supply", f"{filtered['SCENARIO_SUPPLY'].sum():,.0f}")
-    col3.metric("Demand", f"{filtered['DEMAND'].sum():,.0f}")
-    col4.metric("Supply delta", f"{supply_delta:,.0f}",
-                delta=f"{supply_delta:,.0f}", delta_color="normal")
+    section_header("Supply & Demand", "Aggregate hours for the filtered period")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Baseline Supply", f"{filtered['BASE_SUPPLY'].sum():,.0f} hrs")
+    c2.metric("Scenario Supply", f"{filtered['SCENARIO_SUPPLY'].sum():,.0f} hrs")
+    c3.metric("Total Demand", f"{filtered['DEMAND'].sum():,.0f} hrs")
+    c4.metric(
+        "Supply Delta",
+        f"{supply_delta:,.0f} hrs",
+        delta=f"{supply_delta:+,.0f}",
+        delta_color="normal",
+    )
 
+# Row 2 — Gap analysis
 with st.container(border=True):
-    st.subheader("Supply and Demand Gap")
-    col5, col6, col7 = st.columns(3)
-    col5.metric("Baseline gap", f"{filtered['BASE_GAP'].sum():,.0f}")
-    col6.metric("Scenario gap", f"{filtered['SCENARIO_GAP'].sum():,.0f}")
-    col7.metric("Gap delta", f"{gap_delta:,.0f}",
-                delta=f"{gap_delta:,.0f}", delta_color="normal")
+    section_header("Supply vs Demand Gap", "Surplus (+) or deficit (−) in hours")
+    c5, c6, c7 = st.columns(3)
+    c5.metric("Baseline Gap", f"{filtered['BASE_GAP'].sum():,.0f} hrs")
+    c6.metric("Scenario Gap", f"{filtered['SCENARIO_GAP'].sum():,.0f} hrs")
+    c7.metric(
+        "Gap Improvement",
+        f"{gap_delta:,.0f} hrs",
+        delta=f"{gap_delta:+,.0f}",
+        delta_color="normal",
+    )
 
+# Row 3 — Backlog
 with st.container(border=True):
-    st.subheader("Backlog")
-    col8, col9, col10 = st.columns(3)
-    col8.metric("Baseline ending backlog", f"{baseline_ending_backlog:,.0f}")
-    col9.metric("Scenario ending backlog", f"{scenario_ending_backlog:,.0f}")
-    col10.metric("Ending backlog delta", f"{backlog_delta:,.0f}",
-                 delta=f"{backlog_delta:,.0f}", delta_color="inverse")
+    section_header("Backlog", "Starting backlog adjusted by cumulative gap")
+    c8, c9, c10 = st.columns(3)
+    c8.metric("Baseline Ending Backlog", f"{baseline_ending_backlog:,.0f} hrs")
+    c9.metric("Scenario Ending Backlog", f"{scenario_ending_backlog:,.0f} hrs")
+    c10.metric(
+        "Backlog Reduction",
+        f"{backlog_delta:,.0f} hrs",
+        delta=f"{backlog_delta:+,.0f}",
+        delta_color="inverse",
+    )
 
-# ── Charts ──────────────────────────────────────────────────────────
+# ── Charts (tabbed) ──────────────────────────────────────────────────
 
-st.divider()
+st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
 region_label = "All Selected Regions" if region_filter == "All" else region_filter
-st.subheader(f"Monthly supply vs demand — {region_label}")
-st.caption("Gap = Supply minus Demand for each month.")
 
-with st.expander("Baseline"):
+tab_baseline, tab_scenario, tab_backlog = st.tabs(
+    ["📈 Baseline", "📊 Scenario", "📦 Backlog Summary"]
+)
+
+with tab_baseline:
     fig1 = baseline_supply_demand_with_gap(filtered, region_label=region_label)
     if fig1:
         st.pyplot(fig1, clear_figure=True)
+    else:
+        st.info("No data to chart for the current filters.")
 
-st.divider()
-
-with st.expander("Scenario"):
+with tab_scenario:
     fig2 = scenario_supply_demand_with_gap(filtered, region_label=region_label)
     if fig2:
         st.pyplot(fig2, clear_figure=True)
+    else:
+        st.info("No data to chart for the current filters.")
 
-st.divider()
-
-with st.expander("Backlog Summary"):
+with tab_backlog:
     fig3 = supply_delta_chart(filtered, region_label=region_label, backlog=backlog)
     if fig3:
         st.pyplot(fig3, clear_figure=True)
+    else:
+        st.info("No data to chart for the current filters.")
 
 # ── Data table & download ──────────────────────────────────────────
 
-st.divider()
+st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
-display_df = filtered.copy()
-display_df["DATE"] = display_df["DATE"].dt.date.astype(str)
+with st.container(border=True):
+    section_header("📋 Detail Data", f"Showing {len(filtered):,} of {len(df):,} rows")
 
-st.download_button(
-    "Download CSV",
-    display_df.to_csv(index=False).encode("utf-8"),
-    file_name="scenario_results.csv",
-    mime="text/csv",
-)
+    display_df = filtered.copy()
+    display_df["DATE"] = display_df["DATE"].dt.strftime("%b %Y")
 
-st.caption(f"Showing {len(filtered):,} of {len(df):,} rows")
-st.dataframe(display_df, hide_index=True)
+    dl1, dl2, _ = st.columns([1, 1, 4])
+    with dl1:
+        st.download_button(
+            "⬇  Download CSV",
+            display_df.to_csv(index=False).encode("utf-8"),
+            file_name="scenario_results.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+
+    st.dataframe(display_df, hide_index=True, use_container_width=True)

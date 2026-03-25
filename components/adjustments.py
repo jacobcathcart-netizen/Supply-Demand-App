@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import streamlit as st
 
+from components.branding import GRAY_600, NAVY
+
 
 def adjustment_inputs(
     regions: list[str],
@@ -24,24 +26,41 @@ def adjustment_inputs(
     dict[str, int]
         Region → headcount adjustment.
     """
-    st.subheader("Headcount adjustments")
-    st.caption(
-        "Adjustments are applied to scenario headcount starting on the "
-        "adjustment start date."
+    st.markdown(
+        f"""
+        <div style="margin-bottom:1rem;">
+            <h3 style="margin-bottom:0.25rem;">Headcount Adjustments</h3>
+            <p style="color:{GRAY_600};font-size:0.85rem;font-family:Tahoma,sans-serif;margin:0;">
+                Add or remove FTEs per region starting on the adjustment date.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
+    # Reset button
     _, btn_col = st.columns([3, 1])
     with btn_col:
-        if st.button("Reset all", help="Set every region adjustment to 0"):
+        if st.button("↺ Reset All", help="Set every region adjustment to 0"):
             for r in regions:
                 st.session_state[f"adj_{r}"] = 0
 
+    # Grid layout: 3 columns for regions
     adjustments: dict[str, int] = {}
-    for region in regions:
-        key = f"adj_{region}"
-        if key not in st.session_state:
-            st.session_state[key] = int(saved_adjustments.get(region, 0))
-
-        adjustments[region] = int(st.number_input(region, step=1, key=key))
+    cols_per_row = 3
+    for i in range(0, len(regions), cols_per_row):
+        cols = st.columns(cols_per_row)
+        for j, col in enumerate(cols):
+            idx = i + j
+            if idx >= len(regions):
+                break
+            region = regions[idx]
+            key = f"adj_{region}"
+            if key not in st.session_state:
+                st.session_state[key] = int(saved_adjustments.get(region, 0))
+            with col:
+                adjustments[region] = int(
+                    st.number_input(region, step=1, key=key)
+                )
 
     return adjustments

@@ -1,38 +1,154 @@
-"""Landing page — connection diagnostics and quick-start guidance."""
+"""Landing page — system status and quick navigation."""
 
 import streamlit as st
 
-from components.branding import apply_branding
+from components.branding import (
+    GRAY_600,
+    LIGHT_BLUE,
+    NAVY,
+    TEAL,
+    apply_branding,
+    status_badge,
+)
 from data.snowflake import get_connection_info, get_regions_df, reset_connection
 
-st.set_page_config(page_title="Staffing Supply and Demand", layout="wide")
+st.set_page_config(
+    page_title="Supply & Demand | CCR",
+    page_icon="⚡",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 apply_branding()
 
-st.title("Staffing Supply and Demand")
-st.caption("Use the sidebar to navigate to **Inputs** to configure a scenario, then view **Results**.")
+# ── Sidebar branding ──────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown(
+        f"""
+        <div style="text-align:center;padding:0.5rem 0 1.5rem;">
+            <div style="font-size:1.5rem;font-weight:700;color:white;
+                        font-family:Tahoma,sans-serif;letter-spacing:-0.02em;">
+                ⚡ CCR
+            </div>
+            <div style="font-size:0.75rem;color:rgba(255,255,255,0.6);
+                        font-family:Tahoma,sans-serif;margin-top:0.15rem;">
+                Workforce Planning
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# ── Hero section ──────────────────────────────────────────────────────
+
+st.markdown(
+    f"""
+    <div style="padding:2rem 0 1rem;">
+        <h1 style="border-bottom:none;margin-bottom:0.5rem;font-size:2.2rem;">
+            Staffing Supply & Demand
+        </h1>
+        <p style="color:{GRAY_600};font-size:1.05rem;font-family:Tahoma,sans-serif;
+                  margin:0;max-width:640px;">
+            Model workforce capacity against project demand. Configure scenarios,
+            adjust headcount, and analyse supply gaps across regions.
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ── Quick-start cards ─────────────────────────────────────────────────
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    if st.button("Test Connection"):
-        try:
-            st.dataframe(get_connection_info(), hide_index=True)
-            st.success("Connected to Snowflake")
-        except Exception as exc:
-            st.error(f"Connection failed: {exc}")
+    st.markdown(
+        f"""
+        <div style="background:white;border:1px solid #EEF1F6;border-radius:12px;
+                    padding:1.5rem;height:180px;box-shadow:0 1px 3px rgba(10,51,112,0.06);">
+            <div style="font-size:1.5rem;margin-bottom:0.75rem;">📝</div>
+            <div style="font-weight:600;color:{NAVY};font-family:Tahoma,sans-serif;
+                        font-size:1rem;margin-bottom:0.35rem;">
+                1. Configure Inputs
+            </div>
+            <div style="color:{GRAY_600};font-size:0.85rem;font-family:Tahoma,sans-serif;">
+                Set scenario parameters, select regions, and define headcount adjustments.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 with col2:
-    if st.button("Load Regions"):
-        try:
-            regions_df = get_regions_df()
-            if regions_df.empty:
-                st.warning("No regions returned.")
-            else:
-                st.dataframe(regions_df, hide_index=True)
-        except Exception as exc:
-            st.error(f"Region query failed: {exc}")
+    st.markdown(
+        f"""
+        <div style="background:white;border:1px solid #EEF1F6;border-radius:12px;
+                    padding:1.5rem;height:180px;box-shadow:0 1px 3px rgba(10,51,112,0.06);">
+            <div style="font-size:1.5rem;margin-bottom:0.75rem;">▶️</div>
+            <div style="font-weight:600;color:{NAVY};font-family:Tahoma,sans-serif;
+                        font-size:1rem;margin-bottom:0.35rem;">
+                2. Run Scenario
+            </div>
+            <div style="color:{GRAY_600};font-size:0.85rem;font-family:Tahoma,sans-serif;">
+                Execute the model to compute supply, demand, and gap projections.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 with col3:
-    if st.button("Reset Connection"):
-        reset_connection()
-        st.success("Snowflake connection reset.")
+    st.markdown(
+        f"""
+        <div style="background:white;border:1px solid #EEF1F6;border-radius:12px;
+                    padding:1.5rem;height:180px;box-shadow:0 1px 3px rgba(10,51,112,0.06);">
+            <div style="font-size:1.5rem;margin-bottom:0.75rem;">📊</div>
+            <div style="font-weight:600;color:{NAVY};font-family:Tahoma,sans-serif;
+                        font-size:1rem;margin-bottom:0.35rem;">
+                3. View Results
+            </div>
+            <div style="color:{GRAY_600};font-size:0.85rem;font-family:Tahoma,sans-serif;">
+                Analyse KPIs, charts, and backlog trends. Download data as CSV.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# ── System status ─────────────────────────────────────────────────────
+
+st.markdown("<div style='height:2rem'></div>", unsafe_allow_html=True)
+
+with st.expander("🔌  System Diagnostics", expanded=False):
+    d1, d2, d3 = st.columns(3)
+
+    with d1:
+        if st.button("Test Connection", use_container_width=True):
+            try:
+                info = get_connection_info()
+                st.dataframe(info, hide_index=True)
+                st.markdown(status_badge("Connected", TEAL), unsafe_allow_html=True)
+            except Exception as exc:
+                st.error(f"Connection failed: {exc}")
+
+    with d2:
+        if st.button("Load Regions", use_container_width=True):
+            try:
+                regions_df = get_regions_df()
+                if regions_df.empty:
+                    st.warning("No regions returned.")
+                else:
+                    st.dataframe(regions_df, hide_index=True)
+                    st.markdown(
+                        status_badge(f"{len(regions_df)} regions loaded", TEAL),
+                        unsafe_allow_html=True,
+                    )
+            except Exception as exc:
+                st.error(f"Region query failed: {exc}")
+
+    with d3:
+        if st.button("Reset Connection", use_container_width=True):
+            reset_connection()
+            st.markdown(
+                status_badge("Connection reset", LIGHT_BLUE),
+                unsafe_allow_html=True,
+            )
