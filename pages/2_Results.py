@@ -135,26 +135,27 @@ backlog_delta = scenario_ending_backlog - baseline_ending_backlog
 
 # ── KPI metrics ─────────────────────────────────────────────────────
 
-k1, k2, k3 = st.columns(3)
-k1.metric("Baseline supply", f"{filtered['BASE_SUPPLY'].sum():,.0f}")
-k2.metric("Scenario supply", f"{filtered['SCENARIO_SUPPLY'].sum():,.0f}")
-k3.metric("Supply delta", f"{filtered['SUPPLY_DELTA'].sum():,.0f}")
+supply_delta = filtered["SUPPLY_DELTA"].sum()
+gap_delta = filtered["SCENARIO_GAP"].sum() - filtered["BASE_GAP"].sum()
 
-k4, k5, k6, k7 = st.columns(4)
-k4.metric("Demand", f"{filtered['DEMAND'].sum():,.0f}")
-k5.metric("Baseline gap", f"{filtered['BASE_GAP'].sum():,.0f}")
-k6.metric("Scenario gap", f"{filtered['SCENARIO_GAP'].sum():,.0f}")
-k7.metric("Net Backlog change", f"{filtered['NET_BACKLOG'].sum():,.0f}")
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Baseline supply", f"{filtered['BASE_SUPPLY'].sum():,.0f}")
+col2.metric("Scenario supply", f"{filtered['SCENARIO_SUPPLY'].sum():,.0f}")
+col3.metric("Demand", f"{filtered['DEMAND'].sum():,.0f}")
+col4.metric("Supply delta", f"{supply_delta:,.0f}",
+            delta=f"{supply_delta:,.0f}", delta_color="normal")
 
-k8, k9, k10 = st.columns(3)
-k8.metric("Baseline ending backlog", f"{baseline_ending_backlog:,.0f}")
-k9.metric("Scenario ending backlog", f"{scenario_ending_backlog:,.0f}")
-k10.metric(
-    "Ending backlog delta",
-    f"{backlog_delta:,.0f}",
-    delta=f"{backlog_delta:,.0f}",
-    delta_color="inverse",
-)
+col5, col6, col7 = st.columns(3)
+col5.metric("Baseline gap", f"{filtered['BASE_GAP'].sum():,.0f}")
+col6.metric("Scenario gap", f"{filtered['SCENARIO_GAP'].sum():,.0f}")
+col7.metric("Gap delta", f"{gap_delta:,.0f}",
+            delta=f"{gap_delta:,.0f}", delta_color="normal")
+
+col8, col9, col10 = st.columns(3)
+col8.metric("Baseline ending backlog", f"{baseline_ending_backlog:,.0f}")
+col9.metric("Scenario ending backlog", f"{scenario_ending_backlog:,.0f}")
+col10.metric("Ending backlog delta", f"{backlog_delta:,.0f}",
+             delta=f"{backlog_delta:,.0f}", delta_color="inverse")
 
 # ── Charts ──────────────────────────────────────────────────────────
 
