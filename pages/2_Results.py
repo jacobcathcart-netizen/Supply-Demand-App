@@ -14,9 +14,10 @@ from components.branding import (
     section_header,
 )
 from components.visuals import (
+    backlog_trend_chart,
     baseline_supply_demand_with_gap,
+    gap_bar_chart,
     scenario_supply_demand_with_gap,
-    supply_delta_chart,
 )
 from data.snowflake import get_backlog
 from logic.scenario import run_scenario
@@ -247,8 +248,8 @@ st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
 region_label = "All Selected Regions" if region_filter == "All" else region_filter
 
-tab_baseline, tab_scenario, tab_backlog = st.tabs(
-    ["📈 Baseline", "📊 Scenario", "📦 Backlog Summary"]
+tab_baseline, tab_scenario, tab_gap, tab_backlog = st.tabs(
+    ["📈 Baseline", "📊 Scenario", "📊 Supply vs Demand Gap", "📦 Backlog Trend"]
 )
 
 with tab_baseline:
@@ -265,10 +266,17 @@ with tab_scenario:
     else:
         st.info("No data to chart for the current filters.")
 
-with tab_backlog:
-    fig3 = supply_delta_chart(filtered, region_label=region_label, backlog=backlog)
+with tab_gap:
+    fig3 = gap_bar_chart(filtered, region_label=region_label, backlog=backlog)
     if fig3:
         st.pyplot(fig3, clear_figure=True)
+    else:
+        st.info("No data to chart for the current filters.")
+
+with tab_backlog:
+    fig4 = backlog_trend_chart(filtered, region_label=region_label, backlog=backlog)
+    if fig4:
+        st.pyplot(fig4, clear_figure=True)
     else:
         st.info("No data to chart for the current filters.")
 

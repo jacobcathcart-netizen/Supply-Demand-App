@@ -220,32 +220,26 @@ def scenario_supply_demand_with_gap(
     return _line_chart(df, "SCENARIO_SUPPLY", "SCENARIO_GAP", "Scenario", region_label)
 
 
-# ── Backlog summary chart ────────────────────────────────────────────
+# ── Gap bar chart ────────────────────────────────────────────────────
 
 
-def supply_delta_chart(
+def gap_bar_chart(
     df: pd.DataFrame,
     region_label: str = "All regions",
     backlog: float = 0,
 ) -> Figure | None:
-    """Gap bars + cumulative backlog line + normalised backlog line."""
+    """Baseline vs scenario gap as side-by-side bars with data labels."""
     monthly = _monthly_totals(df, backlog=backlog)
     if monthly.empty:
         return None
 
     base_months, adjusted_months = _split_base_adjusted(monthly)
 
-    monthly["NORMALIZED_BACKLOG"] = (
-        monthly["SCENARIO_GAP_CUMSUM"] / monthly["SCENARIO_SUPPLY"]
-    )
+    fig, ax = plt.subplots(figsize=CHART_FIGSIZE_WIDE)
 
-    fig, ax1 = plt.subplots(figsize=CHART_FIGSIZE_WIDE)
-    ax2 = ax1.twinx()
-    ax3 = ax1.twinx()
-
-    # Gap bars with rounded edges via edgecolor
     bar_kwargs = dict(width=BAR_WIDTH_DAYS, edgecolor="white", linewidth=0.5, zorder=2)
-    ax1.bar(
+
+    bars_base = ax.bar(
         base_months["DATE"],
         base_months["DISPLAY_GAP"],
         color=LIGHT_BLUE,
@@ -253,7 +247,7 @@ def supply_delta_chart(
         alpha=0.85,
         **bar_kwargs,
     )
-    ax1.bar(
+    bars_scenario = ax.bar(
         adjusted_months["DATE"],
         adjusted_months["DISPLAY_GAP"],
         color=TEAL,
@@ -261,14 +255,66 @@ def supply_delta_chart(
         alpha=0.85,
         **bar_kwargs,
     )
-    ax1.axhline(0, linewidth=0.8, color=NAVY, alpha=0.4)
+    ax.axhline(0, linewidth=0.8, color=NAVY, alpha=0.4)
 
-    # Cumulative backlog line
-    ax2.plot(
+    # Data labels on every bar
+    for bars, color in [(bars_base, NAVY), (bars_scenario, NAVY)]:
+        for bar in bars:
+            val = bar.get_height()
+            va = "bottom" if val >= 0 else "top"
+            offset = 4 if val >= 0 else -4
+            ax.annotate(
+                f"{val:,.0f}",
+                xy=(bar.get_x() + bar.get_width() / 2, val),
+                xytext=(0, offset),
+                textcoords="offset points",
+                ha="center",
+                va=va,
+                fontsize=7.5,
+                fontweight="bold",
+                color=color,
+            )
+
+    ax.set_title(f"Supply vs Demand Gap — {region_label}")
+    ax.set_xlabel("")
+    ax.set_ylabel("Gap (hrs)")
+    ax.yaxis.set_major_formatter(mticker.FuncFormatter(_thousands_formatter))
+    ax.legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.10),
+        ncol=2,
+        framealpha=0.95,
+    )
+
+    return _finalize(fig)
+
+
+# ── Backlog trend chart ──────────────────────────────────────────────
+
+
+def backlog_trend_chart(
+    df: pd.DataFrame,
+    region_label: str = "All regions",
+    backlog: float = 0,
+) -> Figure | None:
+    """Cumulative backlog (hours) on left axis, normalised backlog on right axis."""
+    monthly = _monthly_totals(df, backlog=backlog)
+    if monthly.empty:
+        return None
+
+    monthly["NORMALIZED_BACKLOG"] = (
+        monthly["SCENARIO_GAP_CUMSUM"] / monthly["SCENARIO_SUPPLY"]
+    )
+
+    fig, ax_hours = plt.subplots(figsize=CHART_FIGSIZE_WIDE)
+    ax_norm = ax_hours.twinx()
+
+    # Cumulative backlog line (left axis)
+    ax_hours.plot(
         monthly["DATE"],
         monthly["SCENARIO_GAP_CUMSUM"],
         marker="o",
-        markersize=6,
+        markersize=7,
         label="Cumulative Backlog (hrs)",
         color=ORANGE,
         linewidth=2.5,
@@ -277,15 +323,21 @@ def supply_delta_chart(
         markeredgewidth=2,
         zorder=4,
     )
+    ax_hours.fill_between(
+        monthly["DATE"],
+        monthly["SCENARIO_GAP_CUMSUM"],
+        alpha=0.08,
+        color=ORANGE,
+    )
 
-    # Normalised backlog line
-    ax3.plot(
+    # Normalised backlog line (right axis)
+    ax_norm.plot(
         monthly["DATE"],
         monthly["NORMALIZED_BACKLOG"],
         marker="s",
-        markersize=5,
+        markersize=6,
         linestyle="--",
-        label="Normalized Backlog",
+        label="Normalized Backlog (Squad-Months)",
         color=GOLD,
         linewidth=2,
         markerfacecolor="white",
@@ -294,69 +346,74 @@ def supply_delta_chart(
         zorder=4,
     )
 
-    # Sparse annotations (first, middle, last)
-    label_idx = sorted({0, len(monthly) // 2, len(monthly) - 1})
-    label_idx = [i for i in label_idx if 0 <= i < len(monthly)]
-
-    for i in label_idx:
+    # Data labels on every point
+    for i in range(len(monthly)):
         x = monthly["DATE"].iloc[i]
-        y_bl = monthly["SCENARIO_GAP_CUMSUM"].iloc[i]
-        ax2.annotate(
-            f"{y_bl:,.0f}",
-            xy=(x, y_bl),
-            xytext=(0, 12),
+
+        y_hrs = monthly["SCENARIO_GAP_CUMSUM"].iloc[i]
+        ax_hours.annotate(
+            f"{y_hrs:,.0f}",
+            xy=(x, y_hrs),
+            xytext=(0, 10),
             textcoords="offset points",
             ha="center",
             va="bottom",
-            fontsize=8,
+            fontsize=7.5,
             fontweight="bold",
             color=ORANGE,
         )
 
         y_norm = monthly["NORMALIZED_BACKLOG"].iloc[i]
-        ax3.annotate(
+        ax_norm.annotate(
             f"{y_norm:.1f}",
             xy=(x, y_norm),
-            xytext=(0, -14),
+            xytext=(0, -12),
             textcoords="offset points",
             ha="center",
             va="top",
-            fontsize=8,
+            fontsize=7.5,
             fontweight="bold",
             color=GOLD,
         )
 
-    # Axis limits
-    ax1.set_ylim(*_padded_limits(monthly["DISPLAY_GAP"]))
-    ax2.set_ylim(*_padded_limits(monthly["SCENARIO_GAP_CUMSUM"], padding_frac=0.1))
-    ax3.set_ylim(
-        *_padded_limits(monthly["NORMALIZED_BACKLOG"], padding_frac=0.1, min_pad=0.1)
+    # Axis formatting
+    ax_hours.set_ylim(*_padded_limits(monthly["SCENARIO_GAP_CUMSUM"], padding_frac=0.15))
+    ax_norm.set_ylim(
+        *_padded_limits(monthly["NORMALIZED_BACKLOG"], padding_frac=0.15, min_pad=0.1)
     )
 
-    # Labels & legend
-    ax1.set_title(f"Backlog Summary — {region_label}")
-    ax1.set_xlabel("")
-    ax1.set_ylabel("Supply vs Demand Gap (hrs)")
-    ax1.yaxis.set_major_formatter(mticker.FuncFormatter(_thousands_formatter))
-    ax2.set_ylabel("")
-    ax3.set_ylabel("")
-    ax2.set_yticks([])
-    ax3.set_yticks([])
+    ax_hours.set_title(f"Backlog Trend — {region_label}")
+    ax_hours.set_xlabel("")
+    ax_hours.set_ylabel("Cumulative Backlog (hrs)", color=ORANGE)
+    ax_hours.yaxis.set_major_formatter(mticker.FuncFormatter(_thousands_formatter))
+    ax_hours.tick_params(axis="y", labelcolor=ORANGE)
 
-    # Hide right spines for twin axes
-    ax2.spines["right"].set_visible(False)
-    ax3.spines["right"].set_visible(False)
-    ax3.spines["top"].set_visible(False)
+    ax_norm.set_ylabel("Normalized Backlog (Squad-Months)", color=GOLD)
+    ax_norm.tick_params(axis="y", labelcolor=GOLD)
+    ax_norm.spines["right"].set_edgecolor(GOLD)
 
-    handles = sum((a.get_legend_handles_labels()[0] for a in (ax1, ax2, ax3)), [])
-    labels = sum((a.get_legend_handles_labels()[1] for a in (ax1, ax2, ax3)), [])
-    ax1.legend(
-        handles,
-        labels,
+    # Combined legend
+    h1, l1 = ax_hours.get_legend_handles_labels()
+    h2, l2 = ax_norm.get_legend_handles_labels()
+    ax_hours.legend(
+        h1 + h2,
+        l1 + l2,
         loc="upper center",
-        bbox_to_anchor=(0.5, -0.12),
-        ncol=4,
+        bbox_to_anchor=(0.5, -0.10),
+        ncol=2,
         framealpha=0.95,
     )
 
     return _finalize(fig)
+
+
+# ── Legacy wrapper (kept for backward compatibility) ─────────────────
+
+
+def supply_delta_chart(
+    df: pd.DataFrame,
+    region_label: str = "All regions",
+    backlog: float = 0,
+) -> Figure | None:
+    """Deprecated — use gap_bar_chart and backlog_trend_chart instead."""
+    return gap_bar_chart(df, region_label=region_label, backlog=backlog)
