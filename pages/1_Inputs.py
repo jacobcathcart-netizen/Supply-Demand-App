@@ -218,7 +218,7 @@ with right:
 st.divider()
 
 try:
-    st.dataframe(get_backlog(pm_assumption, cm_assumption), use_container_width=True)
+    st.dataframe(get_backlog(pm_assumption, cm_assumption), width="stretch")
 except Exception as exc:
     st.warning(f"Could not load backlog data: {exc}")
 

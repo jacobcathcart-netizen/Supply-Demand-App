@@ -197,4 +197,4 @@ st.download_button(
 )
 
 st.caption(f"Showing {len(filtered):,} of {len(df):,} rows")
-st.dataframe(display_df, use_container_width=True, hide_index=True)
+st.dataframe(display_df, hide_index=True)

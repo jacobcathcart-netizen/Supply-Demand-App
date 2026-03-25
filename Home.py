@@ -14,7 +14,7 @@ col1, col2, col3 = st.columns(3)
 with col1:
     if st.button("Test Connection"):
         try:
-            st.dataframe(get_connection_info(), use_container_width=True, hide_index=True)
+            st.dataframe(get_connection_info(), hide_index=True)
             st.success("Connected to Snowflake")
         except Exception as exc:
             st.error(f"Connection failed: {exc}")
@@ -26,7 +26,7 @@ with col2:
             if regions_df.empty:
                 st.warning("No regions returned.")
             else:
-                st.dataframe(regions_df, use_container_width=True, hide_index=True)
+                st.dataframe(regions_df, hide_index=True)
         except Exception as exc:
             st.error(f"Region query failed: {exc}")
 
