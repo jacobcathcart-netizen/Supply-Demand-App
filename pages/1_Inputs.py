@@ -33,25 +33,6 @@ st.set_page_config(
 )
 apply_branding()
 
-# ── Sidebar branding ──────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown(
-        """
-        <div style="text-align:center;padding:0.5rem 0 1.5rem;">
-            <div style="font-size:1.5rem;font-weight:700;color:white;
-                        font-family:Tahoma,sans-serif;letter-spacing:-0.02em;">
-                ⚡ CCR
-            </div>
-            <div style="font-size:0.75rem;color:rgba(255,255,255,0.6);
-                        font-family:Tahoma,sans-serif;margin-top:0.15rem;">
-                Workforce Planning
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
 st.title("Scenario Inputs")
 
 # ── Session-state defaults ──────────────────────────────────────────

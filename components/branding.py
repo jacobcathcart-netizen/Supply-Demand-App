@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import streamlit as st
+
+# ── Logo path ────────────────────────────────────────────────────────
+_LOGO_PATH = Path(__file__).resolve().parent.parent / "assets" / "logo.jpg"
 
 # ── CCR Brand Colors ─────────────────────────────────────────────────
 NAVY = "#0A3370"
@@ -285,8 +290,32 @@ hr {{
 
 
 def apply_branding() -> None:
-    """Inject CCR enterprise CSS into the current page."""
+    """Inject CCR enterprise CSS and render the sidebar logo."""
     st.markdown(_CUSTOM_CSS, unsafe_allow_html=True)
+
+    # Logo in sidebar
+    with st.sidebar:
+        if _LOGO_PATH.exists():
+            st.image(str(_LOGO_PATH), use_container_width=True)
+        else:
+            st.markdown(
+                """
+                <div style="text-align:center;padding:0.5rem 0 1rem;">
+                    <div style="font-size:1.5rem;font-weight:700;color:white;
+                                font-family:Tahoma,sans-serif;">
+                        Cypress Creek Solutions
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        st.markdown(
+            '<div style="text-align:center;font-size:0.75rem;'
+            'color:rgba(255,255,255,0.6);font-family:Tahoma,sans-serif;'
+            'margin-top:-0.5rem;padding-bottom:1rem;">'
+            "Workforce Planning</div>",
+            unsafe_allow_html=True,
+        )
 
 
 def metric_card(
