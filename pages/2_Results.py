@@ -66,8 +66,6 @@ def _load_backlog(pm_hours: int, cm_hours: int) -> pd.DataFrame:
 
 # ── Execute ─────────────────────────────────────────────────────────
 
-# ── Run scenario ─────────────────────────────────────────────────────────────
-
 with st.spinner("Running scenario..."):
     df = _run(
         tuple(regions),
@@ -128,17 +126,6 @@ k4, k5, k6 = st.columns(3)
 k4.metric("Demand", f"{filtered['DEMAND'].sum():,.0f}")
 k5.metric("Baseline gap", f"{filtered['BASE_GAP'].sum():,.0f}")
 k6.metric("Scenario gap", f"{filtered['SCENARIO_GAP'].sum():,.0f}")
-k7.metric("Net Backlog change", f"{filtered['NET_BACKLOG'].sum():,.0f}")
-
-k8, k9, k10 = st.columns(3)
-k8.metric("Baseline ending backlog", f"{baseline_ending_backlog:,.0f}")
-k9.metric("Scenario ending backlog", f"{scenario_ending_backlog:,.0f}")
-k10.metric(
-    "Ending backlog delta",
-    f"{backlog_delta:,.0f}",
-    delta=f"{backlog_delta:,.0f}",
-    delta_color="inverse",
-)
 
 # ── Charts ──────────────────────────────────────────────────────────
 
