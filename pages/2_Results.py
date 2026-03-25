@@ -7,7 +7,6 @@ import streamlit as st
 
 from components.visuals import (
     baseline_supply_demand_with_gap,
-    get_region_backlog,
     scenario_supply_demand_with_gap,
     supply_delta_chart,
 )
@@ -60,7 +59,7 @@ def _load_backlog(pm_hours: int, cm_hours: int) -> pd.DataFrame:
     df = get_backlog(pm_hours, cm_hours).copy()
     if df.empty:
         return df
-    df.columns = ["Region", "COUNT_BACKLOG", "HOUR_BACKLOG"]
+    df.columns = ["REGION", "PROJECT_NAME", "COUNT_BACKLOG", "HOUR_BACKLOG"]
     return df
 
 
@@ -119,16 +118,17 @@ if show_only_gaps:
 
 backlog_df = _load_backlog(scenario_inputs["pm_assumption"], scenario_inputs["cm_assumption"])
 
-if region_filter == "All":
-    backlog = (
-        backlog_df.loc[backlog_df["Region"].isin(regions), "HOUR_BACKLOG"].sum()
-        if not backlog_df.empty
-        else 0.0
-    )
-else:
-    backlog = get_region_backlog(backlog_df, region_filter)
+# Filter backlog to match the region and project selections
+filtered_backlog = backlog_df.copy() if not backlog_df.empty else pd.DataFrame()
+if not filtered_backlog.empty:
+    filtered_backlog = filtered_backlog[filtered_backlog["REGION"].isin(regions)]
+    if region_filter != "All":
+        filtered_backlog = filtered_backlog[filtered_backlog["REGION"] == region_filter]
+    if selected_projects:
+        filtered_backlog = filtered_backlog[filtered_backlog["PROJECT_NAME"].isin(selected_projects)]
 
-backlog = float(backlog)
+backlog = float(filtered_backlog["HOUR_BACKLOG"].sum()) if not filtered_backlog.empty else 0.0
+
 baseline_ending_backlog = backlog - filtered["BASE_GAP"].sum()
 scenario_ending_backlog = backlog - filtered["SCENARIO_GAP"].sum()
 backlog_delta = scenario_ending_backlog - baseline_ending_backlog
