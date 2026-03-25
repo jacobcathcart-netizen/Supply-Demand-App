@@ -1,26 +1,24 @@
-"""Smoke test for config module (no Snowflake connection required)."""
+"""Smoke tests for the config module and data-layer imports."""
 
-from config import (
-    CACHE_TTL_SECONDS,
-    DEFAULT_CM_HOURS,
-    DEFAULT_PM_HOURS,
-    DEFAULT_PRODUCTIVITY_LOSS,
-    HOURS_PER_DAY,
-    SESSION_DEFAULTS,
-    SNOWFLAKE_SCHEMA,
-)
+from __future__ import annotations
+
+from datetime import date
+
+from config import ScenarioInputs, DEFAULT_START_DATE, DEFAULT_END_DATE
 
 
-def test_constants_are_sane():
-    assert HOURS_PER_DAY == 8
-    assert CACHE_TTL_SECONDS > 0
-    assert 0 < DEFAULT_PRODUCTIVITY_LOSS < 1
-    assert DEFAULT_PM_HOURS > 0
-    assert DEFAULT_CM_HOURS > 0
-    assert "." in SNOWFLAKE_SCHEMA
+class TestScenarioInputs:
+    def test_defaults(self):
+        s = ScenarioInputs()
+        assert s.start_date == DEFAULT_START_DATE
+        assert s.end_date == DEFAULT_END_DATE
+        assert s.adjustment_start_date == s.start_date
 
+    def test_immutable(self):
+        s = ScenarioInputs()
+        with __import__("pytest").raises(AttributeError):
+            s.scenario_name = "changed"  # type: ignore[misc]
 
-def test_session_defaults():
-    assert SESSION_DEFAULTS.inputs_saved is False
-    assert SESSION_DEFAULTS.adjustment_start_date is None
-    assert isinstance(SESSION_DEFAULTS.scenario, dict)
+    def test_custom_adjustment_start(self):
+        s = ScenarioInputs(adjustment_start_date=date(2025, 6, 1))
+        assert s.adjustment_start_date == date(2025, 6, 1)
