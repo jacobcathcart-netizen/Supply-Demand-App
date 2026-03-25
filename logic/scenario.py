@@ -1,212 +1,163 @@
+"""Scenario engine — pure-function pipeline that computes supply-vs-demand gaps.
+
+Public API
+----------
+run_scenario(...)  →  pd.DataFrame with columns:
+    CCRID, PROJECT_NAME, REGION, DATE,
+    BASE_SUPPLY, SCENARIO_SUPPLY, SUPPLY_DELTA,
+    DEMAND, BASE_GAP, SCENARIO_GAP, NET_BACKLOG
+"""
+
+from __future__ import annotations
+
 import pandas as pd
 
-from data.snowflake import (
-    get_supply,
-    get_working_days,
-    get_demand_weight,
-    get_demand,
-)
+from config import HOURS_PER_DAY
+from data.snowflake import get_demand, get_demand_weight, get_supply, get_working_days
+
+_OUTPUT_COLUMNS = [
+    "CCRID", "PROJECT_NAME", "REGION", "DATE",
+    "BASE_SUPPLY", "SCENARIO_SUPPLY", "SUPPLY_DELTA",
+    "DEMAND", "BASE_GAP", "SCENARIO_GAP", "NET_BACKLOG",
+]
+
+_NUMERIC_COLUMNS = [
+    "BASE_SUPPLY", "SCENARIO_SUPPLY", "SUPPLY_DELTA",
+    "DEMAND", "BASE_GAP", "SCENARIO_GAP", "NET_BACKLOG",
+]
 
 
 def run_scenario(
-    regions,
-    adjustments,
+    regions: list[str],
+    adjustments: dict[str, int],
     start_date,
     end_date,
     adjustment_start_date,
-    pct_decrease,
-    vac_days_per_month,
-    sick_days_per_month,
-):
-    supply = _get_filtered_supply(regions)
-    wd = _get_working_days(start_date, end_date)
-    adj_df = _get_adjustments_df(regions, adjustments)
+    pct_decrease: float,
+    vac_days_per_month: float,
+    sick_days_per_month: float,
+) -> pd.DataFrame:
+    """Run a single scenario and return the final output DataFrame."""
+    supply = _filter_supply(regions)
+    wd = _prepare_working_days(start_date, end_date)
+    adj_df = _adjustments_to_df(regions, adjustments)
 
-    expanded = _build_expanded_supply_frame(
-        wd=wd,
-        supply=supply,
-        adj_df=adj_df,
+    expanded = _expand_supply(
+        wd, supply, adj_df,
         adjustment_start_date=adjustment_start_date,
         pct_decrease=pct_decrease,
-        vac_days_per_month=vac_days_per_month,
-        sick_days_per_month=sick_days_per_month,
+        absence_days=float(vac_days_per_month) + float(sick_days_per_month),
     )
 
-    weights = _get_weights()
-    scenario_alloc = _allocate_supply_to_projects(expanded, weights)
-
-    demand = _get_project_demand()
-    final_df = _build_final_output(scenario_alloc, demand)
-
-    return final_df
+    allocated = _allocate_to_projects(expanded, _prepare_weights())
+    demand = _prepare_demand()
+    return _assemble_output(allocated, demand)
 
 
-def _get_filtered_supply(regions):
-    supply = get_supply().copy()
-    supply = supply[supply["REGION"].isin(regions)].copy()
-    return supply
+# ── Internal helpers ─────────────────────────────────────────────────────────
+
+def _filter_supply(regions: list[str]) -> pd.DataFrame:
+    return get_supply().loc[lambda d: d["REGION"].isin(regions)].copy()
 
 
-def _get_working_days(start_date, end_date):
+def _prepare_working_days(start_date, end_date) -> pd.DataFrame:
     wd = get_working_days(start_date, end_date).copy()
     wd["MONTH_START"] = pd.to_datetime(wd["MONTH_START"])
     wd["MONTH_NUMBER"] = wd["MONTH_START"].dt.month
-    wd = wd[["MONTH_START", "MONTH_NUMBER", "BUSINESS_DAYS"]].copy()
-    return wd
+    return wd[["MONTH_START", "MONTH_NUMBER", "BUSINESS_DAYS"]]
 
 
-def _get_adjustments_df(regions, adjustments):
-    return pd.DataFrame(
-        {
-            "REGION": regions,
-            "ADJUSTMENT": [int(adjustments.get(region, 0)) for region in regions],
-        }
-    )
+def _adjustments_to_df(regions: list[str], adjustments: dict[str, int]) -> pd.DataFrame:
+    return pd.DataFrame({
+        "REGION": regions,
+        "ADJUSTMENT": [int(adjustments.get(r, 0)) for r in regions],
+    })
 
 
-def _build_expanded_supply_frame(
-    wd,
-    supply,
-    adj_df,
+def _expand_supply(
+    wd: pd.DataFrame,
+    supply: pd.DataFrame,
+    adj_df: pd.DataFrame,
+    *,
     adjustment_start_date,
-    pct_decrease,
-    vac_days_per_month,
-    sick_days_per_month,
-):
+    pct_decrease: float,
+    absence_days: float,
+) -> pd.DataFrame:
+    """Cross-join months × regions, apply headcount adjustments, compute hours."""
     expanded = (
         wd.merge(supply, on="MONTH_NUMBER", how="left")
-        .merge(adj_df, on="REGION", how="left")
-        .copy()
+          .merge(adj_df, on="REGION", how="left")
     )
     expanded["ADJUSTMENT"] = expanded["ADJUSTMENT"].fillna(0)
 
-    absence_days = float(vac_days_per_month) + float(sick_days_per_month)
     prod_mult = 1 - float(pct_decrease)
-    adjustment_start_ts = pd.to_datetime(adjustment_start_date)
+    adj_start_ts = pd.to_datetime(adjustment_start_date)
 
+    # Headcount
     expanded["BASE_HEADCOUNT"] = expanded["COUNT"]
     expanded["SCENARIO_HEADCOUNT"] = expanded["COUNT"]
-    expanded.loc[
-        expanded["MONTH_START"] >= adjustment_start_ts,
-        "SCENARIO_HEADCOUNT",
-    ] = (
-        expanded["COUNT"] + expanded["ADJUSTMENT"]
-    )
+    mask = expanded["MONTH_START"] >= adj_start_ts
+    expanded.loc[mask, "SCENARIO_HEADCOUNT"] = expanded["COUNT"] + expanded["ADJUSTMENT"]
 
-    expanded["ABSENCE_DAYS_PER_FTE"] = absence_days
-    expanded["NET_BUSINESS_DAYS"] = (
-        expanded["BUSINESS_DAYS"] - expanded["ABSENCE_DAYS_PER_FTE"]
-    ).clip(lower=0)
+    # Net business days
+    expanded["NET_BUSINESS_DAYS"] = (expanded["BUSINESS_DAYS"] - absence_days).clip(lower=0)
 
+    # Supply hours
     expanded["BASE_GROSS_SUPPLY_HOURS"] = (
-        expanded["BASE_HEADCOUNT"] * expanded["NET_BUSINESS_DAYS"] * 8
+        expanded["BASE_HEADCOUNT"] * expanded["NET_BUSINESS_DAYS"] * HOURS_PER_DAY
     )
     expanded["SCENARIO_GROSS_SUPPLY_HOURS"] = (
-        expanded["SCENARIO_HEADCOUNT"] * expanded["NET_BUSINESS_DAYS"] * 8
+        expanded["SCENARIO_HEADCOUNT"] * expanded["NET_BUSINESS_DAYS"] * HOURS_PER_DAY
     )
     expanded["BASE_NET_SUPPLY_HOURS"] = expanded["BASE_GROSS_SUPPLY_HOURS"] * prod_mult
-    expanded["SCENARIO_NET_SUPPLY_HOURS"] = (
-        expanded["SCENARIO_GROSS_SUPPLY_HOURS"] * prod_mult
-    )
+    expanded["SCENARIO_NET_SUPPLY_HOURS"] = expanded["SCENARIO_GROSS_SUPPLY_HOURS"] * prod_mult
 
     return expanded
 
 
-def _get_weights():
-    weights = get_demand_weight().copy()
-    weights = weights.rename(columns={"SERVICE_REGION_ST": "REGION"})
-    weights = weights[["CCRID", "REGION", "MONTH_NUMBER", "ALLOCATION"]].copy()
-    return weights
+def _prepare_weights() -> pd.DataFrame:
+    weights = get_demand_weight().rename(columns={"SERVICE_REGION_ST": "REGION"})
+    return weights[["CCRID", "REGION", "MONTH_NUMBER", "ALLOCATION"]]
 
 
-def _allocate_supply_to_projects(expanded, weights):
-    scenario_alloc = expanded.merge(
-        weights,
-        on=["MONTH_NUMBER", "REGION"],
-        how="inner",
+def _allocate_to_projects(expanded: pd.DataFrame, weights: pd.DataFrame) -> pd.DataFrame:
+    alloc = expanded.merge(weights, on=["MONTH_NUMBER", "REGION"], how="inner")
+    alloc["BASE_PROJECT_SUPPLY_HOURS"] = alloc["BASE_NET_SUPPLY_HOURS"] * alloc["ALLOCATION"]
+    alloc["SCENARIO_PROJECT_SUPPLY_HOURS"] = alloc["SCENARIO_NET_SUPPLY_HOURS"] * alloc["ALLOCATION"]
+    return alloc
+
+
+def _prepare_demand() -> pd.DataFrame:
+    demand = get_demand().rename(columns={"HOURS": "DEMAND_HOURS"})
+    return demand[["CCRID", "PROJECT_NAME", "MONTH_NUMBER", "DEMAND_HOURS"]]
+
+
+def _assemble_output(alloc: pd.DataFrame, demand: pd.DataFrame) -> pd.DataFrame:
+    final = alloc.merge(demand, on=["CCRID", "MONTH_NUMBER"], how="left")
+    final["DEMAND_HOURS"] = final["DEMAND_HOURS"].fillna(0)
+
+    final["BASE_GAP_HOURS"] = final["BASE_PROJECT_SUPPLY_HOURS"] - final["DEMAND_HOURS"]
+    final["SCENARIO_GAP_HOURS"] = final["SCENARIO_PROJECT_SUPPLY_HOURS"] - final["DEMAND_HOURS"]
+    final["SUPPLY_DELTA_HOURS"] = (
+        final["SCENARIO_PROJECT_SUPPLY_HOURS"] - final["BASE_PROJECT_SUPPLY_HOURS"]
+    )
+    final["NET_BACKLOG"] = (
+        final["SCENARIO_GAP_HOURS"] - final["BASE_GAP_HOURS"] - final["DEMAND_HOURS"]
     )
 
-    scenario_alloc["BASE_PROJECT_SUPPLY_HOURS"] = (
-        scenario_alloc["BASE_NET_SUPPLY_HOURS"] * scenario_alloc["ALLOCATION"]
+    final = final.rename(columns={
+        "MONTH_START": "DATE",
+        "BASE_PROJECT_SUPPLY_HOURS": "BASE_SUPPLY",
+        "SCENARIO_PROJECT_SUPPLY_HOURS": "SCENARIO_SUPPLY",
+        "SUPPLY_DELTA_HOURS": "SUPPLY_DELTA",
+        "DEMAND_HOURS": "DEMAND",
+        "BASE_GAP_HOURS": "BASE_GAP",
+        "SCENARIO_GAP_HOURS": "SCENARIO_GAP",
+    })
+
+    final[_NUMERIC_COLUMNS] = final[_NUMERIC_COLUMNS].round(1)
+    return (
+        final[_OUTPUT_COLUMNS]
+        .sort_values(["DATE", "REGION", "CCRID"])
+        .reset_index(drop=True)
     )
-    scenario_alloc["SCENARIO_PROJECT_SUPPLY_HOURS"] = (
-        scenario_alloc["SCENARIO_NET_SUPPLY_HOURS"] * scenario_alloc["ALLOCATION"]
-    )
-
-    return scenario_alloc
-
-
-def _get_project_demand():
-    demand = get_demand().copy()
-    demand = demand.rename(columns={"HOURS": "DEMAND_HOURS"})
-    demand = demand[["CCRID", "PROJECT_NAME", "MONTH_NUMBER", "DEMAND_HOURS"]].copy()
-    return demand
-
-
-def _build_final_output(scenario_alloc, demand):
-    final_df = scenario_alloc.merge(
-        demand,
-        on=["CCRID", "MONTH_NUMBER"],
-        how="left",
-    )
-
-    final_df["DEMAND_HOURS"] = final_df["DEMAND_HOURS"].fillna(0)
-    final_df["BASE_GAP_HOURS"] = (
-        final_df["BASE_PROJECT_SUPPLY_HOURS"] - final_df["DEMAND_HOURS"]
-    )
-    final_df["SCENARIO_GAP_HOURS"] = (
-        final_df["SCENARIO_PROJECT_SUPPLY_HOURS"] - final_df["DEMAND_HOURS"]
-    )
-    final_df["SUPPLY_DELTA_HOURS"] = (
-        final_df["SCENARIO_PROJECT_SUPPLY_HOURS"]
-        - final_df["BASE_PROJECT_SUPPLY_HOURS"]
-    )
-    final_df["NET_BACKLOG"] = (
-        final_df["SCENARIO_GAP_HOURS"]
-        - final_df["BASE_GAP_HOURS"] 
-        - final_df["DEMAND_HOURS"]
-    )
-
-    final_df = final_df.rename(columns={"MONTH_START": "DATE"})
-
-    final_df = final_df[
-        [
-            "CCRID",
-            "PROJECT_NAME",
-            "REGION",
-            "DATE",
-            "BASE_PROJECT_SUPPLY_HOURS",
-            "SCENARIO_PROJECT_SUPPLY_HOURS",
-            "SUPPLY_DELTA_HOURS",
-            "DEMAND_HOURS",
-            "BASE_GAP_HOURS",
-            "SCENARIO_GAP_HOURS",
-            "NET_BACKLOG",
-        ]
-    ].copy()
-
-    final_df = final_df.rename(
-        columns={
-            "BASE_PROJECT_SUPPLY_HOURS": "BASE_SUPPLY",
-            "SCENARIO_PROJECT_SUPPLY_HOURS": "SCENARIO_SUPPLY",
-            "SUPPLY_DELTA_HOURS": "SUPPLY_DELTA",
-            "DEMAND_HOURS": "DEMAND",
-            "BASE_GAP_HOURS": "BASE_GAP",
-            "SCENARIO_GAP_HOURS": "SCENARIO_GAP",
-        }
-    )
-
-    numeric_cols = [
-        "BASE_SUPPLY",
-        "SCENARIO_SUPPLY",
-        "SUPPLY_DELTA",
-        "DEMAND",
-        "BASE_GAP",
-        "SCENARIO_GAP",
-        "NET_BACKLOG"
-    ]
-    final_df[numeric_cols] = final_df[numeric_cols].round(1)
-
-    final_df = final_df.sort_values(["DATE", "REGION", "CCRID"]).reset_index(drop=True)
-
-    return final_df
