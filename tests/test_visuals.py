@@ -12,9 +12,6 @@ from components.visuals import (
     get_region_backlog,
     scenario_supply_demand_with_gap,
     supply_delta_chart,
-    supply_delta_chart2,
-    supply_delta_chart3,
-    supply_delta_chart4,
 )
 
 
@@ -56,7 +53,7 @@ class TestMonthlyTotals:
 class TestPaddedLimits:
     def test_symmetric_padding(self):
         s = pd.Series([-100, 200])
-        lo, hi = _padded_limits(s, pad_frac=0.1, min_pad=1)
+        lo, hi = _padded_limits(s, padding_frac=0.1, min_pad=1)
         assert lo < -100
         assert hi > 200
 
@@ -75,17 +72,8 @@ class TestChartFunctions:
         fig = chart_fn(sample_df, region_label="Test")
         assert fig is not None
 
-    @pytest.mark.parametrize(
-        "chart_fn",
-        [
-            supply_delta_chart,
-            supply_delta_chart2,
-            supply_delta_chart3,
-            supply_delta_chart4,
-        ],
-    )
-    def test_combo_charts_return_figure(self, sample_df, chart_fn):
-        fig = chart_fn(sample_df, region_label="Test", backlog=100)
+    def test_combo_chart_returns_figure(self, sample_df):
+        fig = supply_delta_chart(sample_df, region_label="Test", backlog=100)
         assert fig is not None
 
     def test_empty_df_returns_none(self):

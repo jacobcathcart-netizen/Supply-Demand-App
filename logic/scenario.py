@@ -27,6 +27,7 @@ _FINAL_COLUMNS: list[str] = [
     "DEMAND",
     "BASE_GAP",
     "SCENARIO_GAP",
+    "NET_BACKLOG",
 ]
 
 _NUMERIC_COLUMNS: list[str] = [
@@ -36,6 +37,7 @@ _NUMERIC_COLUMNS: list[str] = [
     "DEMAND",
     "BASE_GAP",
     "SCENARIO_GAP",
+    "NET_BACKLOG",
 ]
 
 
@@ -184,15 +186,6 @@ def _prepare_demand() -> pd.DataFrame:
     demand = get_demand().rename(columns={"HOURS": "DEMAND_HOURS"})
     return demand[["CCRID", "PROJECT_NAME", "MONTH_NUMBER", "DEMAND_HOURS"]]
 
-def _prepare_demand() -> pd.DataFrame:
-    demand = get_demand().copy()
-    return demand.rename(columns={"HOURS": "DEMAND_HOURS"})[
-        ["CCRID", "PROJECT_NAME", "MONTH_NUMBER", "DEMAND_HOURS"]
-    ]
-
-def _assemble_output(alloc: pd.DataFrame, demand: pd.DataFrame) -> pd.DataFrame:
-    final = alloc.merge(demand, on=["CCRID", "MONTH_NUMBER"], how="left")
-    final["DEMAND_HOURS"] = final["DEMAND_HOURS"].fillna(0)
 
 def _assemble_output(
     allocated: pd.DataFrame, demand: pd.DataFrame
@@ -208,8 +201,10 @@ def _assemble_output(
     df["SUPPLY_DELTA_HOURS"] = (
         df["SCENARIO_PROJECT_SUPPLY_HOURS"] - df["BASE_PROJECT_SUPPLY_HOURS"]
     )
+    df["NET_BACKLOG"] = (
+        df["SCENARIO_GAP_HOURS"] - df["BASE_GAP_HOURS"] - df["DEMAND_HOURS"]
+    )
 
-    # Rename for the presentation layer
     df = df.rename(
         columns={
             "MONTH_START": "DATE",

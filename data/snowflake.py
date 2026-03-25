@@ -20,9 +20,6 @@ from config import CACHE_TTL_SECONDS, SNOWFLAKE_SCHEMA
 _SCHEMA = SNOWFLAKE_SCHEMA
 _TTL = CACHE_TTL_SECONDS
 
-
-# ── Connection management ────────────────────────────────────────────────────
-
 @st.cache_resource(show_spinner=False)
 def _get_connection() -> snowflake.connector.SnowflakeConnection:
     """Return a long-lived, cached Snowflake connection."""
