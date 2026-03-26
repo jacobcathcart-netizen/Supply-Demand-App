@@ -13,12 +13,10 @@ import pandas as pd
 import snowflake.connector
 import streamlit as st
 
-from config import CACHE_TTL_SECONDS, SNOWFLAKE_SCHEMA
+from config import CACHE_TTL_SECONDS
 
 # ── Connection management ───────────────────────────────────────────
 
-_SCHEMA = SNOWFLAKE_SCHEMA
-_TTL = CACHE_TTL_SECONDS
 
 @st.cache_resource(show_spinner=False)
 def _get_connection() -> snowflake.connector.SnowflakeConnection:

@@ -27,7 +27,6 @@ _FINAL_COLUMNS: list[str] = [
     "DEMAND",
     "BASE_GAP",
     "SCENARIO_GAP",
-    "NET_BACKLOG",
 ]
 
 _NUMERIC_COLUMNS: list[str] = [
@@ -37,7 +36,6 @@ _NUMERIC_COLUMNS: list[str] = [
     "DEMAND",
     "BASE_GAP",
     "SCENARIO_GAP",
-    "NET_BACKLOG",
 ]
 
 
@@ -201,10 +199,6 @@ def _assemble_output(
     df["SUPPLY_DELTA_HOURS"] = (
         df["SCENARIO_PROJECT_SUPPLY_HOURS"] - df["BASE_PROJECT_SUPPLY_HOURS"]
     )
-    df["NET_BACKLOG"] = (
-        df["SCENARIO_GAP_HOURS"] - df["BASE_GAP_HOURS"] - df["DEMAND_HOURS"]
-    )
-
     df = df.rename(
         columns={
             "MONTH_START": "DATE",

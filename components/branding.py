@@ -320,23 +320,6 @@ def apply_branding() -> None:
         )
 
 
-def metric_card(
-    label: str,
-    value: str,
-    delta: str | None = None,
-    delta_color: str = "normal",
-    help_text: str | None = None,
-) -> None:
-    """Render a single styled metric."""
-    st.metric(
-        label=label,
-        value=value,
-        delta=delta,
-        delta_color=delta_color,
-        help=help_text,
-    )
-
-
 def section_header(title: str, subtitle: str | None = None) -> None:
     """Render a styled section header with optional subtitle."""
     st.markdown(
