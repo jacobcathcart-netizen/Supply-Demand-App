@@ -27,7 +27,6 @@ _FINAL_COLUMNS: list[str] = [
     "DEMAND",
     "BASE_GAP",
     "SCENARIO_GAP",
-    "NET_BACKLOG",
 ]
 
 _NUMERIC_COLUMNS: list[str] = [
@@ -37,7 +36,6 @@ _NUMERIC_COLUMNS: list[str] = [
     "DEMAND",
     "BASE_GAP",
     "SCENARIO_GAP",
-    "NET_BACKLOG",
 ]
 
 
@@ -53,6 +51,8 @@ def run_scenario(
     pct_decrease: float,
     vac_days_per_month: float,
     sick_days_per_month: float,
+    excluded_ccrids: list[str] | None = None,
+    custom_projects: list[dict] | None = None,
 ) -> pd.DataFrame:
     """Run a full scenario and return the result DataFrame.
 
@@ -70,6 +70,11 @@ def run_scenario(
         Fraction of time lost to non-project work (0-1).
     vac_days_per_month / sick_days_per_month:
         Average absence days per FTE per month.
+    excluded_ccrids:
+        CCRIDs to exclude from demand and supply allocation.
+    custom_projects:
+        List of dicts with keys CCRID, PROJECT_NAME, REGION, TOTAL_HOURS.
+        These are demand-only projects (supply = 0).
 
     Returns
     -------
@@ -91,10 +96,25 @@ def run_scenario(
     )
 
     weights = _prepare_weights()
-    allocated = _allocate_to_projects(expanded, weights)
-
     demand = _prepare_demand()
-    return _assemble_output(allocated, demand)
+
+    # Filter out excluded projects
+    if excluded_ccrids:
+        weights = weights[~weights["CCRID"].isin(excluded_ccrids)]
+        demand = demand[~demand["CCRID"].isin(excluded_ccrids)]
+
+    allocated = _allocate_to_projects(expanded, weights)
+    output = _assemble_output(allocated, demand)
+
+    # Append custom (demand-only) projects
+    if custom_projects:
+        custom_rows = _build_custom_project_rows(custom_projects, working_days)
+        output = pd.concat([output, custom_rows], ignore_index=True)
+        output = output.sort_values(["DATE", "REGION", "CCRID"]).reset_index(
+            drop=True
+        )
+
+    return output
 
 
 # ── Pipeline steps ──────────────────────────────────────────────────
@@ -201,10 +221,6 @@ def _assemble_output(
     df["SUPPLY_DELTA_HOURS"] = (
         df["SCENARIO_PROJECT_SUPPLY_HOURS"] - df["BASE_PROJECT_SUPPLY_HOURS"]
     )
-    df["NET_BACKLOG"] = (
-        df["SCENARIO_GAP_HOURS"] - df["BASE_GAP_HOURS"] - df["DEMAND_HOURS"]
-    )
-
     df = df.rename(
         columns={
             "MONTH_START": "DATE",
@@ -220,3 +236,32 @@ def _assemble_output(
     df[_NUMERIC_COLUMNS] = df[_NUMERIC_COLUMNS].round(1)
     df = df[_FINAL_COLUMNS].copy()
     return df.sort_values(["DATE", "REGION", "CCRID"]).reset_index(drop=True)
+
+
+def _build_custom_project_rows(
+    custom_projects: list[dict],
+    working_days: pd.DataFrame,
+) -> pd.DataFrame:
+    """Create demand-only output rows for custom/hypothetical projects."""
+    rows: list[dict] = []
+    for proj in custom_projects:
+        start = pd.to_datetime(proj.get("START_DATE"))
+        eligible = working_days[working_days["MONTH_START"] >= start]
+        n_months = len(eligible)
+        monthly_demand = proj["TOTAL_HOURS"] / max(n_months, 1)
+        for _, wd_row in eligible.iterrows():
+            rows.append(
+                {
+                    "CCRID": proj["CCRID"],
+                    "PROJECT_NAME": proj["PROJECT_NAME"],
+                    "REGION": proj["REGION"],
+                    "DATE": wd_row["MONTH_START"],
+                    "BASE_SUPPLY": 0.0,
+                    "SCENARIO_SUPPLY": 0.0,
+                    "SUPPLY_DELTA": 0.0,
+                    "DEMAND": round(monthly_demand, 1),
+                    "BASE_GAP": round(-monthly_demand, 1),
+                    "SCENARIO_GAP": round(-monthly_demand, 1),
+                }
+            )
+    return pd.DataFrame(rows, columns=_FINAL_COLUMNS)

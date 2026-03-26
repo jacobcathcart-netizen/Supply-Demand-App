@@ -298,7 +298,7 @@ def apply_branding() -> None:
     # Logo in sidebar
     with st.sidebar:
         if _LOGO_PATH.exists():
-            st.image(str(_LOGO_PATH), use_container_width=True)
+            st.image(str(_LOGO_PATH), width="stretch")
         else:
             st.markdown(
                 """
@@ -318,23 +318,6 @@ def apply_branding() -> None:
             "Workforce Planning</div>",
             unsafe_allow_html=True,
         )
-
-
-def metric_card(
-    label: str,
-    value: str,
-    delta: str | None = None,
-    delta_color: str = "normal",
-    help_text: str | None = None,
-) -> None:
-    """Render a single styled metric."""
-    st.metric(
-        label=label,
-        value=value,
-        delta=delta,
-        delta_color=delta_color,
-        help=help_text,
-    )
 
 
 def section_header(title: str, subtitle: str | None = None) -> None:

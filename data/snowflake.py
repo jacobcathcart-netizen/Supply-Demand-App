@@ -13,12 +13,10 @@ import pandas as pd
 import snowflake.connector
 import streamlit as st
 
-from config import CACHE_TTL_SECONDS, SNOWFLAKE_SCHEMA
+from config import CACHE_TTL_SECONDS
 
 # ── Connection management ───────────────────────────────────────────
 
-_SCHEMA = SNOWFLAKE_SCHEMA
-_TTL = CACHE_TTL_SECONDS
 
 @st.cache_resource(show_spinner=False)
 def _get_connection() -> snowflake.connector.SnowflakeConnection:
@@ -107,6 +105,31 @@ def get_demand() -> pd.DataFrame:
                SUM(HOURS) AS HOURS
         FROM SA.SUPPLY_DEMAND.SUPPLY_DEMAND_DT
         GROUP BY 1, 2, 3
+        """
+    )
+
+
+# ── Project dimension ──────────────────────────────────────────────
+
+
+@st.cache_data(show_spinner=False, ttl=CACHE_TTL_SECONDS)
+def get_projects() -> pd.DataFrame:
+    """Project dimension table with metadata."""
+    return _fetch_df(
+        """
+        SELECT ROLLUP_CUSTOMER AS CUSTOMER,
+               PROJECT_NAME,
+               PROJECT_NAME_CLEAN,
+               CCRID,
+               STATE,
+               REGION,
+               ACCOUNT_MANAGER,
+               SITE_OPERATING_STATUS_C,
+               O_M_SERVICES_COMMENCEMENT_DATE_C,
+               TERMINATION_DATE_C,
+               PV_KW_DC / 1000 AS PV_MWDC_C,
+               "Int/Ext"
+        FROM SA.STG.PROJECTS_DT
         """
     )
 

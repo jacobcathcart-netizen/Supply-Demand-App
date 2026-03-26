@@ -1,5 +1,6 @@
 """Application-wide constants and default scenario values."""
 
+import random
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Final
@@ -22,6 +23,46 @@ HOURS_PER_DAY: Final[int] = 8
 CHART_FIGSIZE_WIDE: Final[tuple[int, int]] = (13, 5)
 CHART_FIGSIZE_TALL: Final[tuple[int, int]] = (12, 7)
 BAR_WIDTH_DAYS: Final[int] = 15
+
+# ── Demo preset ────────────────────────────────────────────────────
+DEMO_REGIONS: Final[list[str]] = ["NC - Central"]
+
+
+def build_demo_preset() -> dict:
+    """Generate a demo preset with randomised end date, adjustment timing, and headcount."""
+    extra_months = random.randint(1, 10)
+    end_year = DEFAULT_END_DATE.year + (DEFAULT_END_DATE.month + extra_months - 1) // 12
+    end_month = (DEFAULT_END_DATE.month + extra_months - 1) % 12 + 1
+    end_date = date(end_year, end_month, 1)
+
+    # Random adjustment start: not the first or last month
+    total_months = (end_date.year - DEFAULT_START_DATE.year) * 12 + (
+        end_date.month - DEFAULT_START_DATE.month
+    )
+    adj_offset = random.randint(1, max(total_months - 1, 1))
+    adj_year = DEFAULT_START_DATE.year + (DEFAULT_START_DATE.month + adj_offset - 1) // 12
+    adj_month = (DEFAULT_START_DATE.month + adj_offset - 1) % 12 + 1
+    adj_start = date(adj_year, adj_month, 1)
+
+    adjustments = {r: random.randint(3, 17) for r in DEMO_REGIONS}
+
+    return {
+        "scenario": {
+            "scenario_name": "Demo Scenario",
+            "start_date": DEFAULT_START_DATE,
+            "end_date": end_date,
+            "pct_decrease": DEFAULT_PCT_DECREASE,
+            "vac_days_per_month": DEFAULT_VAC_DAYS_PER_YEAR / 12,
+            "sick_days_per_month": DEFAULT_SICK_DAYS_PER_YEAR / 12,
+            "pm_assumption": DEFAULT_PM_HOURS,
+            "cm_assumption": DEFAULT_CM_HOURS,
+        },
+        "selected_regions": list(DEMO_REGIONS),
+        "adjustments": adjustments,
+        "adjustment_start_date": adj_start,
+        "excluded_ccrids": [],
+        "custom_projects": [],
+    }
 
 
 @dataclass(frozen=True)
