@@ -39,6 +39,8 @@ scenario_inputs = st.session_state.get("scenario")
 regions: list[str] = st.session_state.get("selected_regions", [])
 adjustments: dict[str, int] = st.session_state.get("adjustments", {})
 adjustment_start_date = st.session_state.get("adjustment_start_date")
+excluded_ccrids: list[str] = st.session_state.get("excluded_ccrids", [])
+custom_projects: list[dict] = st.session_state.get("custom_projects", [])
 
 if not scenario_inputs or not regions or adjustment_start_date is None:
     st.markdown(
@@ -74,7 +76,13 @@ def _run(
     pct_decrease: float,
     vac_days_per_month: float,
     sick_days_per_month: float,
+    excluded_ccrids: tuple[str, ...] = (),
+    custom_projects: tuple[tuple, ...] = (),
 ) -> pd.DataFrame:
+    custom_proj_list = [
+        {"CCRID": c[0], "PROJECT_NAME": c[1], "REGION": c[2], "TOTAL_HOURS": c[3]}
+        for c in custom_projects
+    ]
     return run_scenario(
         regions=list(regions),
         adjustments=adjustments,
@@ -84,6 +92,8 @@ def _run(
         pct_decrease=pct_decrease,
         vac_days_per_month=vac_days_per_month,
         sick_days_per_month=sick_days_per_month,
+        excluded_ccrids=list(excluded_ccrids),
+        custom_projects=custom_proj_list if custom_proj_list else None,
     )
 
 
@@ -108,6 +118,11 @@ with st.spinner("Running scenario..."):
         scenario_inputs["pct_decrease"],
         scenario_inputs["vac_days_per_month"],
         scenario_inputs["sick_days_per_month"],
+        excluded_ccrids=tuple(excluded_ccrids),
+        custom_projects=tuple(
+            (p["CCRID"], p["PROJECT_NAME"], p["REGION"], p["TOTAL_HOURS"])
+            for p in custom_projects
+        ),
     ).copy()
 
 if df.empty:
@@ -280,13 +295,13 @@ with st.container(border=True):
             display_df.to_csv(index=False).encode("utf-8"),
             file_name="scenario_results.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
 
-    st.dataframe(display_df, hide_index=True, use_container_width=True)
+    st.dataframe(display_df, hide_index=True, width="stretch")
 
 # ── Footer image ─────────────────────────────────────────────────────
 
 if HERO_IMAGE_PATH.exists():
     st.divider()
-    st.image(str(HERO_IMAGE_PATH), use_container_width=True)
+    st.image(str(HERO_IMAGE_PATH), width="stretch")

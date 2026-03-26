@@ -26,7 +26,7 @@ apply_branding()
 if HERO_IMAGE_PATH.exists():
     st.image(
         str(HERO_IMAGE_PATH),
-        use_container_width=True,
+        width="stretch",
     )
 
 st.markdown(
@@ -111,7 +111,7 @@ with st.expander("🔌  System Diagnostics", expanded=False):
     d1, d2, d3, d4 = st.columns(4)
 
     with d1:
-        if st.button("Test Connection", use_container_width=True):
+        if st.button("Test Connection", width="stretch"):
             try:
                 info = get_connection_info()
                 st.dataframe(info, hide_index=True)
@@ -120,7 +120,7 @@ with st.expander("🔌  System Diagnostics", expanded=False):
                 st.error(f"Connection failed: {exc}")
 
     with d2:
-        if st.button("Load Regions", use_container_width=True):
+        if st.button("Load Regions", width="stretch"):
             try:
                 regions_df = get_regions_df()
                 if regions_df.empty:
@@ -135,7 +135,7 @@ with st.expander("🔌  System Diagnostics", expanded=False):
                 st.error(f"Region query failed: {exc}")
 
     with d3:
-        if st.button("Reset Connection", use_container_width=True):
+        if st.button("Reset Connection", width="stretch"):
             reset_connection()
             st.markdown(
                 status_badge("Connection reset", LIGHT_BLUE),
@@ -143,7 +143,7 @@ with st.expander("🔌  System Diagnostics", expanded=False):
             )
 
     with d4:
-        if st.button("Clear Data Cache", use_container_width=True):
+        if st.button("Clear Data Cache", width="stretch"):
             st.cache_data.clear()
             st.markdown(
                 status_badge("Data cache cleared", LIGHT_BLUE),
