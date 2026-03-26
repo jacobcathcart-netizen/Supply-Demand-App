@@ -11,6 +11,7 @@ from components.branding import (
     apply_branding,
     status_badge,
 )
+from config import build_demo_preset
 from data.snowflake import get_connection_info, get_regions_df, reset_connection
 
 st.set_page_config(
@@ -44,6 +45,14 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+# ── Demo / Test button ───────────────────────────────────────────────
+
+_, demo_col, _ = st.columns([1, 2, 1])
+with demo_col:
+    if st.button("🚀  Load Demo & Run", type="primary", width="stretch"):
+        st.session_state.update(inputs_saved=True, **build_demo_preset())
+        st.switch_page("pages/2_Results.py")
 
 # ── Quick-start cards ─────────────────────────────────────────────────
 

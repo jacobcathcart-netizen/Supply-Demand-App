@@ -8,9 +8,7 @@ import streamlit as st
 from components.adjustments import adjustment_inputs
 from components.branding import (
     GRAY_600,
-    LIGHT_BLUE,
     NAVY,
-    TEAL,
     apply_branding,
     section_header,
     status_badge,
@@ -24,7 +22,7 @@ from config import (
     DEFAULT_START_DATE,
     DEFAULT_VAC_DAYS_PER_YEAR,
 )
-from data.snowflake import get_backlog, get_projects, get_regions_df
+from data.snowflake import get_backlog, get_demand_weight, get_projects, get_regions_df
 
 st.set_page_config(
     page_title="Inputs | CCR",
@@ -80,7 +78,7 @@ def _saved(key: str, default: object = None) -> object:
 tab_params, tab_projects = st.tabs(["Scenario Parameters", "Projects"])
 
 # ═══════════════════════════════════════════════════════════════════
-# TAB 1: Scenario Parameters (existing content)
+# TAB 1: Scenario Parameters
 # ═══════════════════════════════════════════════════════════════════
 
 with tab_params:
@@ -104,8 +102,6 @@ with tab_params:
                     format="MM/DD/YYYY",
                 )
 
-            st.markdown("<div style='height:0.75rem'></div>", unsafe_allow_html=True)
-
             # ── Scenario identity ─────────────────────────────
             section_header("🏷️ Scenario", "Name and region selection")
             scenario_name = st.text_input(
@@ -117,8 +113,6 @@ with tab_params:
                 options=regions_list,
                 default=st.session_state["selected_regions"],
             )
-
-            st.markdown("<div style='height:0.75rem'></div>", unsafe_allow_html=True)
 
             # ── Workforce assumptions ─────────────────────────
             section_header("👷 Workforce Assumptions", "Time-off and productivity factors")
@@ -135,35 +129,33 @@ with tab_params:
                     ) / 100
                 )
             with a2:
-                vac_days_per_month = (
-                    st.number_input(
-                        "Vacation days / year",
-                        min_value=0,
-                        max_value=365,
-                        value=int(
-                            round(
-                                _saved("vac_days_per_month", DEFAULT_VAC_DAYS_PER_YEAR / 12) * 12
-                            )
-                        ),
-                        step=1,
-                    ) / 12
+                vac_days_per_year = st.number_input(
+                    "Vacation days / year",
+                    min_value=0,
+                    max_value=365,
+                    value=int(
+                        round(
+                            _saved("vac_days_per_month", DEFAULT_VAC_DAYS_PER_YEAR / 12) * 12
+                        )
+                    ),
+                    step=1,
                 )
             with a3:
-                sick_days_per_month = (
-                    st.number_input(
-                        "Sick days / year",
-                        min_value=0,
-                        max_value=365,
-                        value=int(
-                            round(
-                                _saved("sick_days_per_month", DEFAULT_SICK_DAYS_PER_YEAR / 12) * 12
-                            )
-                        ),
-                        step=1,
-                    ) / 12
+                sick_days_per_year = st.number_input(
+                    "Sick days / year",
+                    min_value=0,
+                    max_value=365,
+                    value=int(
+                        round(
+                            _saved("sick_days_per_month", DEFAULT_SICK_DAYS_PER_YEAR / 12) * 12
+                        )
+                    ),
+                    step=1,
                 )
 
-            st.markdown("<div style='height:0.75rem'></div>", unsafe_allow_html=True)
+            # Convert to monthly for internal storage
+            vac_days_per_month = vac_days_per_year / 12
+            sick_days_per_month = sick_days_per_year / 12
 
             # ── Backlog assumptions ───────────────────────────
             section_header("🔧 Backlog Assumptions", "Hours per maintenance item")
@@ -185,19 +177,6 @@ with tab_params:
                     step=1,
                 )
 
-            st.markdown("<div style='height:0.75rem'></div>", unsafe_allow_html=True)
-
-            # ── Adjustment start ──────────────────────────────
-            section_header("📆 Adjustment Timing")
-            adjustment_start_date = st.date_input(
-                "Headcount adjustment start",
-                value=st.session_state["adjustment_start_date"] or start_date,
-                format="MM/DD/YYYY",
-                help="Month from which headcount changes take effect",
-            )
-            adjustment_start_date = adjustment_start_date.replace(day=1)
-
-            st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
             submitted = st.form_submit_button("💾  Save Inputs", width="stretch")
 
         # ── Validation ──────────────────────────────────────────────────
@@ -206,8 +185,6 @@ with tab_params:
             errors: list[str] = []
             if start_date > end_date:
                 errors.append("Start date must be before end date.")
-            if adjustment_start_date < start_date or adjustment_start_date > end_date:
-                errors.append("Adjustment start date must fall within the scenario range.")
             if not selected_regions:
                 errors.append("Select at least one region.")
 
@@ -219,7 +196,6 @@ with tab_params:
             st.session_state.update(
                 inputs_saved=True,
                 selected_regions=selected_regions,
-                adjustment_start_date=adjustment_start_date,
                 scenario={
                     "scenario_name": scenario_name,
                     "pct_decrease": pct_decrease,
@@ -231,7 +207,7 @@ with tab_params:
                     "cm_assumption": cm_assumption,
                 },
             )
-            st.toast("✅ Inputs saved successfully!", icon="✅")
+            st.toast("Inputs saved!", icon="✅")
 
     # ── Summary panel ───────────────────────────────────────────────────
 
@@ -271,15 +247,21 @@ with tab_params:
                 r2.metric("End Date", str(s["end_date"]))
 
             with st.container(border=True):
+                region_names = st.session_state["selected_regions"]
+                if len(region_names) <= 3:
+                    region_display = ", ".join(region_names)
+                else:
+                    region_display = ", ".join(region_names[:3]) + f" +{len(region_names) - 3}"
                 r3, r4 = st.columns(2)
-                r3.metric("Regions", str(len(st.session_state["selected_regions"])))
-                r4.metric("Adj. Start", str(st.session_state["adjustment_start_date"]))
+                r3.metric("Regions", region_display)
+                adj_start = st.session_state.get("adjustment_start_date")
+                r4.metric("Adj. Start", str(adj_start) if adj_start else "—")
 
             with st.container(border=True):
                 r5, r6, r7 = st.columns(3)
                 r5.metric("Non-Project", f"{s['pct_decrease'] * 100:.0f}%")
-                r6.metric("Vac / mo", f"{s['vac_days_per_month']:.1f}d")
-                r7.metric("Sick / mo", f"{s['sick_days_per_month']:.1f}d")
+                r6.metric("Vacation", f"{s['vac_days_per_month'] * 12:.0f}d/yr")
+                r7.metric("Sick", f"{s['sick_days_per_month'] * 12:.0f}d/yr")
 
             with st.container(border=True):
                 r8, r9 = st.columns(2)
@@ -305,24 +287,54 @@ with tab_params:
         except Exception as exc:
             st.warning(f"Could not load backlog data: {exc}")
 
-    # ── Adjustments & run ────────────────────────────────────────────────
+    # ── Headcount adjustments (visible as soon as regions are selected) ──
 
-    if st.session_state["inputs_saved"]:
+    active_regions = (
+        st.session_state["selected_regions"]
+        if st.session_state["inputs_saved"]
+        else selected_regions
+    )
+
+    if active_regions:
         st.divider()
+
+        # Adjustment start date — placed right above the grid for context
+        section_header(
+            "📆 Headcount Adjustments",
+            "Add or remove FTEs per region. Changes take effect from the start date below.",
+        )
+        adj_col1, adj_col2 = st.columns([1, 3])
+        with adj_col1:
+            adjustment_start_date = st.date_input(
+                "Adjustment start date",
+                value=st.session_state["adjustment_start_date"] or start_date,
+                format="MM/DD/YYYY",
+                help="Month from which headcount changes take effect",
+            )
+            adjustment_start_date = adjustment_start_date.replace(day=1)
+            st.session_state["adjustment_start_date"] = adjustment_start_date
+
         adjustments = adjustment_inputs(
-            st.session_state["selected_regions"],
+            active_regions,
             st.session_state["adjustments"],
         )
         st.session_state["adjustments"] = adjustments
 
-        st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+        # ── Run button ──────────────────────────────────────────────────
 
         _, center, _ = st.columns([1, 2, 1])
         with center:
             run = st.button("▶  Run Scenario", type="primary", width="stretch")
 
         if run:
-            st.switch_page("pages/2_Results.py")
+            if not st.session_state["inputs_saved"]:
+                st.warning("Save your inputs first before running the scenario.")
+            else:
+                st.switch_page("pages/2_Results.py")
+    elif st.session_state["inputs_saved"]:
+        # Saved but no regions — shouldn't happen, but handle gracefully
+        st.divider()
+        st.info("Select at least one region to configure headcount adjustments.")
 
 # ═══════════════════════════════════════════════════════════════════
 # TAB 2: Projects (add / remove)
@@ -341,40 +353,79 @@ with tab_projects:
 
     # ── Remove existing projects ─────────────────────────────────────
 
-    st.markdown(
-        f"""
-        <div style="font-weight:600;color:{NAVY};font-family:Tahoma,sans-serif;
-                    font-size:1rem;margin:1rem 0 0.5rem;">
-            Remove Projects
-        </div>
-        <div style="color:{GRAY_600};font-size:0.85rem;font-family:Tahoma,sans-serif;
-                    margin-bottom:0.75rem;">
-            Excluded projects are removed from both demand and supply allocation.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    section_header("Remove Projects", "Excluded projects are removed from demand and supply allocation")
 
     if not projects_df.empty and "CCRID" in projects_df.columns:
-        project_options = (
-            projects_df[["CCRID", "PROJECT_NAME"]]
-            .drop_duplicates(subset="CCRID")
-            .sort_values("PROJECT_NAME")
-        )
-        ccrid_to_label = dict(
-            zip(
-                project_options["CCRID"],
-                project_options["PROJECT_NAME"] + " (" + project_options["CCRID"] + ")",
+        # Only show projects that exist in the demand weights dataset
+        try:
+            weights_df = get_demand_weight()
+            dataset_ccrids = set(weights_df["CCRID"].unique())
+        except Exception:
+            dataset_ccrids = set(projects_df["CCRID"].unique())
+
+        in_dataset = projects_df[projects_df["CCRID"].isin(dataset_ccrids)].copy()
+
+        if in_dataset.empty:
+            st.info("No projects found in the current dataset.")
+        else:
+            # Dimension filters to narrow the list
+            filter_cols = st.columns(3)
+            with filter_cols[0]:
+                region_opts = sorted(in_dataset["REGION"].dropna().unique().tolist())
+                filter_region = st.multiselect(
+                    "Filter by Region", options=region_opts, placeholder="All regions"
+                )
+            with filter_cols[1]:
+                customer_opts = sorted(in_dataset["CUSTOMER"].dropna().unique().tolist())
+                filter_customer = st.multiselect(
+                    "Filter by Customer", options=customer_opts, placeholder="All customers"
+                )
+            with filter_cols[2]:
+                state_opts = sorted(in_dataset["STATE"].dropna().unique().tolist())
+                filter_state = st.multiselect(
+                    "Filter by State", options=state_opts, placeholder="All states"
+                )
+
+            filtered_projects = in_dataset
+            if filter_region:
+                filtered_projects = filtered_projects[
+                    filtered_projects["REGION"].isin(filter_region)
+                ]
+            if filter_customer:
+                filtered_projects = filtered_projects[
+                    filtered_projects["CUSTOMER"].isin(filter_customer)
+                ]
+            if filter_state:
+                filtered_projects = filtered_projects[
+                    filtered_projects["STATE"].isin(filter_state)
+                ]
+
+            project_options = (
+                filtered_projects[["CCRID", "PROJECT_NAME"]]
+                .drop_duplicates(subset="CCRID")
+                .sort_values("PROJECT_NAME")
             )
-        )
-        excluded = st.multiselect(
-            "Exclude projects",
-            options=list(ccrid_to_label.keys()),
-            format_func=lambda c: ccrid_to_label.get(c, c),
-            default=st.session_state["excluded_ccrids"],
-            placeholder="Select projects to exclude...",
-        )
-        st.session_state["excluded_ccrids"] = excluded
+            ccrid_to_label = dict(
+                zip(
+                    project_options["CCRID"],
+                    project_options["PROJECT_NAME"] + " (" + project_options["CCRID"] + ")",
+                )
+            )
+
+            # Keep previously excluded CCRIDs that are still valid
+            valid_defaults = [
+                c for c in st.session_state["excluded_ccrids"] if c in dataset_ccrids
+            ]
+            excluded = st.multiselect(
+                "Exclude projects",
+                options=list(ccrid_to_label.keys()),
+                format_func=lambda c: ccrid_to_label.get(c, c),
+                default=[c for c in valid_defaults if c in ccrid_to_label],
+                placeholder="Select projects to exclude...",
+            )
+            st.session_state["excluded_ccrids"] = excluded
+
+            st.caption(f"{len(project_options)} project(s) shown after filters")
     else:
         st.info("No project data available for exclusion.")
 
@@ -382,27 +433,21 @@ with tab_projects:
 
     # ── Add custom projects ──────────────────────────────────────────
 
-    st.markdown(
-        f"""
-        <div style="font-weight:600;color:{NAVY};font-family:Tahoma,sans-serif;
-                    font-size:1rem;margin:0 0 0.5rem;">
-            Add Projects
-        </div>
-        <div style="color:{GRAY_600};font-size:0.85rem;font-family:Tahoma,sans-serif;
-                    margin-bottom:0.75rem;">
-            Add hypothetical projects with custom demand. Total hours are spread
-            evenly across scenario months. Custom projects have zero supply
-            (demand-only).
-        </div>
-        """,
-        unsafe_allow_html=True,
+    section_header(
+        "Add Projects",
+        "Add hypothetical demand-only projects. Hours are spread evenly across scenario months from the start date.",
     )
 
-    add_manual, add_csv = st.tabs(["Manual Entry", "CSV Upload"])
+    add_mode = st.radio(
+        "Input method",
+        ["Manual Entry", "CSV Upload"],
+        horizontal=True,
+        label_visibility="collapsed",
+    )
 
-    with add_manual:
+    if add_mode == "Manual Entry":
         with st.form("add_project_form", clear_on_submit=True):
-            p1, p2, p3 = st.columns(3)
+            p1, p2, p3, p4 = st.columns([2, 1, 1, 1])
             with p1:
                 new_name = st.text_input("Project Name")
             with p2:
@@ -411,9 +456,13 @@ with tab_projects:
                 new_hours = st.number_input(
                     "Total Hours", min_value=0, value=0, step=100
                 )
-            add_submitted = st.form_submit_button(
-                "Add Project", width="stretch"
-            )
+            with p4:
+                new_start = st.date_input(
+                    "Start Date",
+                    value=_saved("start_date", DEFAULT_START_DATE),
+                    format="MM/DD/YYYY",
+                )
+            add_submitted = st.form_submit_button("Add Project", width="stretch")
 
         if add_submitted:
             if not new_name.strip():
@@ -426,27 +475,22 @@ with tab_projects:
                         "PROJECT_NAME": new_name.strip(),
                         "REGION": new_region,
                         "TOTAL_HOURS": new_hours,
+                        "START_DATE": str(new_start),
                     }
                 )
                 st.toast(f"Added project: {new_name.strip()}", icon="✅")
                 st.rerun()
 
-    with add_csv:
-        st.markdown(
-            f"""
-            <div style="color:{GRAY_600};font-size:0.85rem;font-family:Tahoma,sans-serif;
-                        margin-bottom:0.5rem;">
-                CSV must contain columns: <strong>CCRID</strong>, <strong>PROJECT_NAME</strong>,
-                <strong>REGION</strong>, <strong>TOTAL_HOURS</strong> (one row per project).
-            </div>
-            """,
-            unsafe_allow_html=True,
+    else:  # CSV Upload
+        st.caption(
+            "CSV must contain columns: CCRID, PROJECT_NAME, REGION, "
+            "TOTAL_HOURS, START_DATE (YYYY-MM-DD). One row per project."
         )
         uploaded = st.file_uploader("Upload CSV", type=["csv"], key="project_csv")
         if uploaded is not None:
             try:
                 csv_df = pd.read_csv(uploaded)
-                required_cols = {"CCRID", "PROJECT_NAME", "REGION", "TOTAL_HOURS"}
+                required_cols = {"CCRID", "PROJECT_NAME", "REGION", "TOTAL_HOURS", "START_DATE"}
                 missing = required_cols - set(csv_df.columns)
                 if missing:
                     st.error(f"CSV is missing columns: {', '.join(sorted(missing))}")
@@ -483,7 +527,7 @@ with tab_projects:
     # ── Current custom projects table ────────────────────────────────
 
     if st.session_state["custom_projects"]:
-        st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+        st.divider()
         section_header(
             "Custom Projects",
             f"{len(st.session_state['custom_projects'])} project(s) added",

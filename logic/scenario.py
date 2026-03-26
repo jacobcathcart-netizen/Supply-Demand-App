@@ -244,10 +244,12 @@ def _build_custom_project_rows(
 ) -> pd.DataFrame:
     """Create demand-only output rows for custom/hypothetical projects."""
     rows: list[dict] = []
-    n_months = len(working_days)
     for proj in custom_projects:
+        start = pd.to_datetime(proj.get("START_DATE"))
+        eligible = working_days[working_days["MONTH_START"] >= start]
+        n_months = len(eligible)
         monthly_demand = proj["TOTAL_HOURS"] / max(n_months, 1)
-        for _, wd_row in working_days.iterrows():
+        for _, wd_row in eligible.iterrows():
             rows.append(
                 {
                     "CCRID": proj["CCRID"],

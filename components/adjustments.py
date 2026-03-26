@@ -4,9 +4,6 @@ from __future__ import annotations
 
 import streamlit as st
 
-from components.branding import GRAY_600, NAVY
-
-
 def adjustment_inputs(
     regions: list[str],
     saved_adjustments: dict[str, int],
@@ -26,18 +23,6 @@ def adjustment_inputs(
     dict[str, int]
         Region → headcount adjustment.
     """
-    st.markdown(
-        f"""
-        <div style="margin-bottom:1rem;">
-            <h3 style="margin-bottom:0.25rem;">Headcount Adjustments</h3>
-            <p style="color:{GRAY_600};font-size:0.85rem;font-family:Tahoma,sans-serif;margin:0;">
-                Add or remove FTEs per region starting on the adjustment date.
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     # Reset button
     _, btn_col = st.columns([3, 1])
     with btn_col:

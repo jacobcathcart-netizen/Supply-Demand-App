@@ -80,7 +80,13 @@ def _run(
     custom_projects: tuple[tuple, ...] = (),
 ) -> pd.DataFrame:
     custom_proj_list = [
-        {"CCRID": c[0], "PROJECT_NAME": c[1], "REGION": c[2], "TOTAL_HOURS": c[3]}
+        {
+            "CCRID": c[0],
+            "PROJECT_NAME": c[1],
+            "REGION": c[2],
+            "TOTAL_HOURS": c[3],
+            "START_DATE": c[4],
+        }
         for c in custom_projects
     ]
     return run_scenario(
@@ -120,7 +126,7 @@ with st.spinner("Running scenario..."):
         scenario_inputs["sick_days_per_month"],
         excluded_ccrids=tuple(excluded_ccrids),
         custom_projects=tuple(
-            (p["CCRID"], p["PROJECT_NAME"], p["REGION"], p["TOTAL_HOURS"])
+            (p["CCRID"], p["PROJECT_NAME"], p["REGION"], p["TOTAL_HOURS"], p["START_DATE"])
             for p in custom_projects
         ),
     ).copy()
