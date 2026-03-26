@@ -108,7 +108,7 @@ with col3:
 st.markdown("<div style='height:2rem'></div>", unsafe_allow_html=True)
 
 with st.expander("🔌  System Diagnostics", expanded=False):
-    d1, d2, d3 = st.columns(3)
+    d1, d2, d3, d4 = st.columns(4)
 
     with d1:
         if st.button("Test Connection", use_container_width=True):
@@ -139,5 +139,13 @@ with st.expander("🔌  System Diagnostics", expanded=False):
             reset_connection()
             st.markdown(
                 status_badge("Connection reset", LIGHT_BLUE),
+                unsafe_allow_html=True,
+            )
+
+    with d4:
+        if st.button("Clear Data Cache", use_container_width=True):
+            st.cache_data.clear()
+            st.markdown(
+                status_badge("Data cache cleared", LIGHT_BLUE),
                 unsafe_allow_html=True,
             )
