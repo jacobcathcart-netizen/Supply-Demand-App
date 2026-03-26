@@ -23,13 +23,6 @@ def adjustment_inputs(
     dict[str, int]
         Region → headcount adjustment.
     """
-    # Reset button
-    _, btn_col = st.columns([3, 1])
-    with btn_col:
-        if st.button("↺ Reset All", help="Set every region adjustment to 0"):
-            for r in regions:
-                st.session_state[f"adj_{r}"] = 0
-
     # Grid layout: 3 columns for regions
     adjustments: dict[str, int] = {}
     cols_per_row = 3

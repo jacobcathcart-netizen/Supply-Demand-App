@@ -85,6 +85,16 @@ with tab_params:
     left, right = st.columns([1.2, 1], gap="large")
 
     with left:
+        # ── Region selection (outside form so it updates immediately) ──
+        section_header("🏷️ Scenario", "Name and region selection")
+        selected_regions = st.multiselect(
+            "Regions",
+            options=regions_list,
+            default=st.session_state["selected_regions"],
+            key="region_selector",
+        )
+        st.session_state["selected_regions"] = selected_regions
+
         with st.form("inputs_form"):
             # ── Date range ────────────────────────────────────
             section_header("📅 Date Range", "Define the scenario time window")
@@ -103,15 +113,9 @@ with tab_params:
                 )
 
             # ── Scenario identity ─────────────────────────────
-            section_header("🏷️ Scenario", "Name and region selection")
             scenario_name = st.text_input(
                 "Scenario name",
                 value=_saved("scenario_name", "Scenario 1"),
-            )
-            selected_regions = st.multiselect(
-                "Regions",
-                options=regions_list,
-                default=st.session_state["selected_regions"],
             )
 
             # ── Workforce assumptions ─────────────────────────
@@ -185,7 +189,7 @@ with tab_params:
             errors: list[str] = []
             if start_date > end_date:
                 errors.append("Start date must be before end date.")
-            if not selected_regions:
+            if not st.session_state["selected_regions"]:
                 errors.append("Select at least one region.")
 
             if errors:
@@ -195,7 +199,6 @@ with tab_params:
 
             st.session_state.update(
                 inputs_saved=True,
-                selected_regions=selected_regions,
                 scenario={
                     "scenario_name": scenario_name,
                     "pct_decrease": pct_decrease,
@@ -289,36 +292,39 @@ with tab_params:
 
     # ── Headcount adjustments (visible as soon as regions are selected) ──
 
-    active_regions = (
-        st.session_state["selected_regions"]
-        if st.session_state["inputs_saved"]
-        else selected_regions
-    )
-
-    if active_regions:
+    if selected_regions:
         st.divider()
-
-        # Adjustment start date — placed right above the grid for context
         section_header(
             "📆 Headcount Adjustments",
             "Add or remove FTEs per region. Changes take effect from the start date below.",
         )
-        adj_col1, adj_col2 = st.columns([1, 3])
-        with adj_col1:
-            adjustment_start_date = st.date_input(
-                "Adjustment start date",
-                value=st.session_state["adjustment_start_date"] or start_date,
-                format="MM/DD/YYYY",
-                help="Month from which headcount changes take effect",
-            )
-            adjustment_start_date = adjustment_start_date.replace(day=1)
-            st.session_state["adjustment_start_date"] = adjustment_start_date
 
-        adjustments = adjustment_inputs(
-            active_regions,
-            st.session_state["adjustments"],
-        )
-        st.session_state["adjustments"] = adjustments
+        with st.form("adjustments_form"):
+            adj_col1, adj_col2 = st.columns([1, 3])
+            with adj_col1:
+                adjustment_start_date = st.date_input(
+                    "Adjustment start date",
+                    value=st.session_state["adjustment_start_date"]
+                    or _saved("start_date", DEFAULT_START_DATE),
+                    format="MM/DD/YYYY",
+                    help="Month from which headcount changes take effect",
+                )
+
+            adjustments = adjustment_inputs(
+                selected_regions,
+                st.session_state["adjustments"],
+            )
+
+            adj_submitted = st.form_submit_button(
+                "💾  Save Adjustments", width="stretch"
+            )
+
+        if adj_submitted:
+            st.session_state["adjustment_start_date"] = adjustment_start_date.replace(
+                day=1
+            )
+            st.session_state["adjustments"] = adjustments
+            st.toast("Adjustments saved!", icon="✅")
 
         # ── Run button ──────────────────────────────────────────────────
 
@@ -331,10 +337,6 @@ with tab_params:
                 st.warning("Save your inputs first before running the scenario.")
             else:
                 st.switch_page("pages/2_Results.py")
-    elif st.session_state["inputs_saved"]:
-        # Saved but no regions — shouldn't happen, but handle gracefully
-        st.divider()
-        st.info("Select at least one region to configure headcount adjustments.")
 
 # ═══════════════════════════════════════════════════════════════════
 # TAB 2: Projects (add / remove)
