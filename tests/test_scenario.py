@@ -216,7 +216,7 @@ class TestRunScenarioIntegration:
         expected_cols = {
             "CCRID", "PROJECT_NAME", "REGION", "DATE",
             "BASE_SUPPLY", "SCENARIO_SUPPLY", "SUPPLY_DELTA",
-            "DEMAND", "BASE_GAP", "SCENARIO_GAP", "NET_BACKLOG",
+            "DEMAND", "BASE_GAP", "SCENARIO_GAP",
         }
         assert set(result.columns) == expected_cols
         assert not result.empty

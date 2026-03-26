@@ -90,7 +90,8 @@ def _monthly_totals(df: pd.DataFrame, backlog: float = 0) -> pd.DataFrame:
         -pd.to_numeric(monthly["SCENARIO_GAP"], errors="coerce").cumsum()
     )
     monthly["BACKLOG_AS_SUPPLY"] = (
-        monthly["SCENARIO_GAP_CUMSUM"] / monthly["SCENARIO_SUPPLY"]
+        monthly["SCENARIO_GAP_CUMSUM"]
+        / monthly["SCENARIO_SUPPLY"].replace(0, float("nan"))
     )
     return monthly
 
@@ -303,7 +304,8 @@ def backlog_trend_chart(
         return None
 
     monthly["NORMALIZED_BACKLOG"] = (
-        monthly["SCENARIO_GAP_CUMSUM"] / monthly["SCENARIO_SUPPLY"]
+        monthly["SCENARIO_GAP_CUMSUM"]
+        / monthly["SCENARIO_SUPPLY"].replace(0, float("nan"))
     )
 
     fig, ax_hours = plt.subplots(figsize=CHART_FIGSIZE_WIDE)
