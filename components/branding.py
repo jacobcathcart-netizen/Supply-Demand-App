@@ -14,7 +14,7 @@ HERO_IMAGE_PATH = _ASSETS_DIR / "solar_farm.jpg"
 # ── CCR Brand Colors ─────────────────────────────────────────────────
 NAVY = "#0A3370"
 BLUE = "#2C31A6"
-LIGHT_BLUE = "#1892DF"
+LIGHT_BLUE = "#0D6EAE"
 TEAL = "#33CCA6"
 GREEN = "#007647"
 ORANGE = "#F26419"
@@ -45,10 +45,21 @@ html, body, [class*="css"] {{
     font-family: Tahoma, 'Inter', Geneva, Verdana, sans-serif;
 }}
 
-/* ─── Hide Streamlit default chrome ───────────────────────────── */
+/* ─── Hide Streamlit default chrome (keep header for skip-nav a11y) */
 #MainMenu {{visibility: hidden;}}
 footer {{visibility: hidden;}}
-header {{visibility: hidden;}}
+
+/* ─── Sidebar collapse/expand button ──────────────────────────── */
+[data-testid="stSidebar"][aria-expanded="false"] ~ [data-testid="collapsedControl"] {{
+    background: {NAVY};
+    border-radius: 0 8px 8px 0;
+    box-shadow: 2px 2px 8px rgba(10,51,112,0.25);
+}}
+[data-testid="collapsedControl"] svg {{
+    color: {WHITE} !important;
+    width: 1.25rem;
+    height: 1.25rem;
+}}
 
 /* ─── Sidebar ─────────────────────────────────────────────────── */
 [data-testid="stSidebar"] {{
@@ -298,7 +309,7 @@ def apply_branding() -> None:
     # Logo in sidebar
     with st.sidebar:
         if _LOGO_PATH.exists():
-            st.image(str(_LOGO_PATH), width="stretch")
+            st.image(str(_LOGO_PATH), width="stretch", caption="Cypress Creek Renewables")
         else:
             st.markdown(
                 """
@@ -313,7 +324,7 @@ def apply_branding() -> None:
             )
         st.markdown(
             '<div style="text-align:center;font-size:0.75rem;'
-            'color:rgba(255,255,255,0.6);font-family:Tahoma,sans-serif;'
+            'color:rgba(255,255,255,0.85);font-family:Tahoma,sans-serif;'
             'margin-top:-0.5rem;padding-bottom:1rem;">'
             "Workforce Planning</div>",
             unsafe_allow_html=True,
@@ -332,8 +343,10 @@ def section_header(title: str, subtitle: str | None = None) -> None:
 
 def status_badge(text: str, color: str = TEAL) -> str:
     """Return HTML for an inline status badge."""
+    # Use dark text on light backgrounds (TEAL, LIGHT_BLUE) for WCAG AA contrast
+    text_color = WHITE if color in (NAVY, BLUE, DARK) else NAVY
     return (
-        f'<span style="background:{color};color:white;padding:0.2rem 0.75rem;'
-        f'border-radius:20px;font-size:0.75rem;font-weight:600;'
-        f'font-family:Tahoma,sans-serif;">{text}</span>'
+        f'<span role="status" style="background:{color};color:{text_color};'
+        f'padding:0.2rem 0.75rem;border-radius:20px;font-size:0.75rem;'
+        f'font-weight:600;font-family:Tahoma,sans-serif;">{text}</span>'
     )

@@ -82,11 +82,15 @@ tab_params, tab_projects = st.tabs(["Scenario Parameters", "Projects"])
 # ═══════════════════════════════════════════════════════════════════
 
 with tab_params:
-    left, right = st.columns([1.2, 1], gap="large")
-
-    with left:
-        # ── Region selection (outside form so it updates immediately) ──
-        section_header("🏷️ Scenario", "Name and region selection")
+    # ── Top row: scenario identity (outside form for immediate updates) ──
+    id_left, id_right = st.columns(2)
+    with id_left:
+        scenario_name = st.text_input(
+            "Scenario name",
+            value=_saved("scenario_name", "Scenario 1"),
+            key="scenario_name_input",
+        )
+    with id_right:
         selected_regions = st.multiselect(
             "Regions",
             options=regions_list,
@@ -95,9 +99,13 @@ with tab_params:
         )
         st.session_state["selected_regions"] = selected_regions
 
-        with st.form("inputs_form"):
-            # ── Date range ────────────────────────────────────
-            section_header("📅 Date Range", "Define the scenario time window")
+    # ── Single form: assumptions + adjustments side by side ──────────
+    with st.form("scenario_form"):
+        left, right = st.columns([1, 1], gap="large")
+
+        with left:
+            # Date range
+            section_header("Date Range")
             d1, d2 = st.columns(2)
             with d1:
                 start_date = st.date_input(
@@ -112,14 +120,8 @@ with tab_params:
                     format="MM/DD/YYYY",
                 )
 
-            # ── Scenario identity ─────────────────────────────
-            scenario_name = st.text_input(
-                "Scenario name",
-                value=_saved("scenario_name", "Scenario 1"),
-            )
-
-            # ── Workforce assumptions ─────────────────────────
-            section_header("👷 Workforce Assumptions", "Time-off and productivity factors")
+            # Workforce assumptions
+            section_header("Workforce Assumptions")
             a1, a2, a3 = st.columns(3)
             with a1:
                 pct_decrease = (
@@ -161,8 +163,8 @@ with tab_params:
             vac_days_per_month = vac_days_per_year / 12
             sick_days_per_month = sick_days_per_year / 12
 
-            # ── Backlog assumptions ───────────────────────────
-            section_header("🔧 Backlog Assumptions", "Hours per maintenance item")
+            # Backlog assumptions
+            section_header("Backlog Assumptions")
             b1, b2 = st.columns(2)
             with b1:
                 cm_assumption = st.number_input(
@@ -181,127 +183,9 @@ with tab_params:
                     step=1,
                 )
 
-            submitted = st.form_submit_button("💾  Save Inputs", width="stretch")
-
-        # ── Validation ──────────────────────────────────────────────────
-
-        if submitted:
-            errors: list[str] = []
-            if start_date > end_date:
-                errors.append("Start date must be before end date.")
-            if not st.session_state["selected_regions"]:
-                errors.append("Select at least one region.")
-
-            if errors:
-                for msg in errors:
-                    st.error(msg)
-                st.stop()
-
-            st.session_state.update(
-                inputs_saved=True,
-                scenario={
-                    "scenario_name": scenario_name,
-                    "pct_decrease": pct_decrease,
-                    "vac_days_per_month": vac_days_per_month,
-                    "sick_days_per_month": sick_days_per_month,
-                    "start_date": start_date,
-                    "end_date": end_date,
-                    "pm_assumption": pm_assumption,
-                    "cm_assumption": cm_assumption,
-                },
-            )
-            st.toast("Inputs saved!", icon="✅")
-
-    # ── Summary panel ───────────────────────────────────────────────────
-
-    with right:
-        if not st.session_state["inputs_saved"]:
-            st.markdown(
-                f"""
-                <div style="background:#F8F9FC;border:1px dashed #D9DDE5;border-radius:12px;
-                            padding:3rem 2rem;text-align:center;margin-top:2rem;">
-                    <div style="font-size:2.5rem;margin-bottom:1rem;">📋</div>
-                    <div style="font-weight:600;color:{NAVY};font-family:Tahoma,sans-serif;
-                                font-size:1.1rem;margin-bottom:0.5rem;">
-                        No Scenario Configured
-                    </div>
-                    <div style="color:{GRAY_600};font-size:0.9rem;font-family:Tahoma,sans-serif;">
-                        Fill in the form and click <strong>Save Inputs</strong> to get started.
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-        else:
-            s = st.session_state["scenario"]
-            section_header("Scenario Summary")
-            st.markdown(
-                f"""
-                <div style="margin-bottom:1rem;">
-                    {status_badge(s['scenario_name'], NAVY)}
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            with st.container(border=True):
-                r1, r2 = st.columns(2)
-                r1.metric("Start Date", str(s["start_date"]))
-                r2.metric("End Date", str(s["end_date"]))
-
-            with st.container(border=True):
-                region_names = st.session_state["selected_regions"]
-                if len(region_names) <= 3:
-                    region_display = ", ".join(region_names)
-                else:
-                    region_display = ", ".join(region_names[:3]) + f" +{len(region_names) - 3}"
-                r3, r4 = st.columns(2)
-                r3.metric("Regions", region_display)
-                adj_start = st.session_state.get("adjustment_start_date")
-                r4.metric("Adj. Start", str(adj_start) if adj_start else "—")
-
-            with st.container(border=True):
-                r5, r6, r7 = st.columns(3)
-                r5.metric("Non-Project", f"{s['pct_decrease'] * 100:.0f}%")
-                r6.metric("Vacation", f"{s['vac_days_per_month'] * 12:.0f}d/yr")
-                r7.metric("Sick", f"{s['sick_days_per_month'] * 12:.0f}d/yr")
-
-            with st.container(border=True):
-                r8, r9 = st.columns(2)
-                r8.metric("Hours / PM", s["pm_assumption"])
-                r9.metric("Hours / CM", s["cm_assumption"])
-
-            with st.container(border=True):
-                r10, r11 = st.columns(2)
-                r10.metric("Excluded Projects", len(st.session_state["excluded_ccrids"]))
-                r11.metric("Custom Projects", len(st.session_state["custom_projects"]))
-
-    # ── Backlog preview ──────────────────────────────────────────────────
-
-    st.divider()
-
-    with st.expander("📦  Backlog Preview", expanded=False):
-        try:
-            backlog_preview = get_backlog(pm_assumption, cm_assumption)
-            if backlog_preview.empty:
-                st.info("No backlog data available.")
-            else:
-                st.dataframe(backlog_preview, hide_index=True)
-        except Exception as exc:
-            st.warning(f"Could not load backlog data: {exc}")
-
-    # ── Headcount adjustments (visible as soon as regions are selected) ──
-
-    if selected_regions:
-        st.divider()
-        section_header(
-            "📆 Headcount Adjustments",
-            "Add or remove FTEs per region. Changes take effect from the start date below.",
-        )
-
-        with st.form("adjustments_form"):
-            adj_col1, adj_col2 = st.columns([1, 3])
-            with adj_col1:
+        with right:
+            section_header("Headcount Adjustments")
+            if selected_regions:
                 adjustment_start_date = st.date_input(
                     "Adjustment start date",
                     value=st.session_state["adjustment_start_date"]
@@ -310,33 +194,74 @@ with tab_params:
                     help="Month from which headcount changes take effect",
                 )
 
-            adjustments = adjustment_inputs(
-                selected_regions,
-                st.session_state["adjustments"],
-            )
+                adjustments = adjustment_inputs(
+                    selected_regions,
+                    st.session_state["adjustments"],
+                )
+            else:
+                adjustment_start_date = None
+                adjustments = {}
+                st.caption("Select at least one region above to configure adjustments.")
 
-            adj_submitted = st.form_submit_button(
-                "💾  Save Adjustments", width="stretch"
-            )
+        submitted = st.form_submit_button("Save & Continue", type="primary", width="stretch")
 
-        if adj_submitted:
+    # ── Validation & save ────────────────────────────────────────────
+
+    if submitted:
+        errors: list[str] = []
+        if start_date > end_date:
+            errors.append("Start date must be before end date.")
+        if not st.session_state["selected_regions"]:
+            errors.append("Select at least one region.")
+
+        if errors:
+            for msg in errors:
+                st.error(msg)
+            st.stop()
+
+        st.session_state.update(
+            inputs_saved=True,
+            scenario={
+                "scenario_name": scenario_name,
+                "pct_decrease": pct_decrease,
+                "vac_days_per_month": vac_days_per_month,
+                "sick_days_per_month": sick_days_per_month,
+                "start_date": start_date,
+                "end_date": end_date,
+                "pm_assumption": pm_assumption,
+                "cm_assumption": cm_assumption,
+            },
+            adjustments=adjustments,
+        )
+        if adjustment_start_date is not None:
             st.session_state["adjustment_start_date"] = adjustment_start_date.replace(
                 day=1
             )
-            st.session_state["adjustments"] = adjustments
-            st.toast("Adjustments saved!", icon="✅")
+        st.toast("Inputs saved!", icon="✅")
 
-        # ── Run button ──────────────────────────────────────────────────
+    # ── Run button ───────────────────────────────────────────────────
 
-        _, center, _ = st.columns([1, 2, 1])
-        with center:
-            run = st.button("▶  Run Scenario", type="primary", width="stretch")
+    _, center, _ = st.columns([1, 2, 1])
+    with center:
+        run = st.button("Run Scenario", type="primary", width="stretch")
 
-        if run:
-            if not st.session_state["inputs_saved"]:
-                st.warning("Save your inputs first before running the scenario.")
+    if run:
+        if not st.session_state["inputs_saved"]:
+            st.warning("Save your inputs first before running the scenario.")
+        else:
+            st.switch_page("pages/2_Results.py")
+
+    # ── Backlog preview (collapsed) ──────────────────────────────────
+
+    with st.expander("Backlog Preview", expanded=False):
+        try:
+            backlog_preview = get_backlog(pm_assumption, cm_assumption)
+            if backlog_preview.empty:
+                st.info("No backlog data available.")
             else:
-                st.switch_page("pages/2_Results.py")
+                st.dataframe(backlog_preview, hide_index=True)
+        except Exception as exc:
+            st.warning(f"Could not load backlog data: {exc}")
 
 # ═══════════════════════════════════════════════════════════════════
 # TAB 2: Projects (add / remove)

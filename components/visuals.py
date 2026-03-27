@@ -362,7 +362,7 @@ def backlog_trend_chart(
             va="bottom",
             fontsize=7.5,
             fontweight="bold",
-            color=ORANGE,
+            color=NAVY,
         )
 
         y_norm = monthly["NORMALIZED_BACKLOG"].iloc[i]
@@ -375,7 +375,7 @@ def backlog_trend_chart(
             va="top",
             fontsize=7.5,
             fontweight="bold",
-            color=GOLD,
+            color=NAVY,
         )
 
     # Axis formatting
