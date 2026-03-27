@@ -8,6 +8,7 @@ tornado visualisations on the Results page.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from typing import Callable
 
 import numpy as np
@@ -30,6 +31,7 @@ class SensitivityParam:
     ceiling: float = float("inf")
     is_headcount: bool = False
     is_backlog_only: bool = False  # CM/PM hours — only changes starting backlog
+    is_date_shift: bool = False  # adjustment month offset
     unit: str = ""
 
 
@@ -79,7 +81,22 @@ PARAMS: list[SensitivityParam] = [
         is_backlog_only=True,
         unit="hrs",
     ),
+    SensitivityParam(
+        name="Adj. month",
+        key="adjustment_start_date",
+        delta_key="adj_months_delta",
+        is_date_shift=True,
+        unit="mo",
+    ),
 ]
+
+
+def _offset_month(d: date, months: int) -> date:
+    """Shift a date by *months* months, clamping to the 1st of the month."""
+    m = d.month - 1 + months
+    y = d.year + m // 12
+    m = m % 12 + 1
+    return date(y, m, 1)
 
 
 # ── Public API ───────────────────────────────────────────────────────
@@ -187,6 +204,25 @@ def run_sensitivity(
             base_val = sum(adj_vals) / len(adj_vals) if adj_vals else 0
             low_val = base_val - delta
             high_val = base_val + delta
+
+        elif param.is_date_shift:
+            # Shift adjustment_start_date by ±delta months
+            base_date = base_kwargs["adjustment_start_date"]
+            start_date = base_kwargs["start_date"]
+            end_date = base_kwargs["end_date"]
+            low_date = max(_offset_month(base_date, -int(delta)), start_date)
+            high_date = min(_offset_month(base_date, int(delta)), end_date)
+
+            low_kw = {**base_kwargs, "adjustment_start_date": low_date}
+            high_kw = {**base_kwargs, "adjustment_start_date": high_date}
+            low_df = run_fn(**low_kw)
+            high_df = run_fn(**high_kw)
+            low_monthly = _monthly_totals(low_df, backlog=base_backlog)
+            high_monthly = _monthly_totals(high_df, backlog=base_backlog)
+
+            base_val = 0  # base is the reference point (no shift)
+            low_val = -int(delta)
+            high_val = int(delta)
 
         else:
             # Standard numeric parameter

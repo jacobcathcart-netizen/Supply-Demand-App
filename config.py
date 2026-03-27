@@ -10,8 +10,8 @@ SNOWFLAKE_SCHEMA: Final[str] = "SA.SUPPLY_DEMAND"
 CACHE_TTL_SECONDS: Final[int] = 1800  # 30 minutes
 
 # ── Scenario defaults ───────────────────────────────────────────────
-DEFAULT_START_DATE: Final[date] = date(2025, 1, 1)
-DEFAULT_END_DATE: Final[date] = date(2025, 12, 31)
+DEFAULT_START_DATE: Final[date] = date(2026, 1, 1)
+DEFAULT_END_DATE: Final[date] = date(2026, 12, 31)
 DEFAULT_PCT_DECREASE: Final[float] = 0.15
 DEFAULT_VAC_DAYS_PER_YEAR: Final[int] = 20
 DEFAULT_SICK_DAYS_PER_YEAR: Final[int] = 8
@@ -21,11 +21,12 @@ HOURS_PER_DAY: Final[int] = 8
 
 # ── Sensitivity defaults (absolute deltas) ────────────────────────
 SENSITIVITY_PCT_DECREASE: Final[int] = 5        # ±5 percentage points
-SENSITIVITY_VAC_DAYS: Final[int] = 5            # ±5 days/year
-SENSITIVITY_SICK_DAYS: Final[int] = 3           # ±3 days/year
+SENSITIVITY_VAC_DAYS: Final[int] = 2            # ±5 days/year
+SENSITIVITY_SICK_DAYS: Final[int] = 1           # ±3 days/year
 SENSITIVITY_CM_HOURS: Final[int] = 4            # ±4 hrs
-SENSITIVITY_PM_HOURS: Final[int] = 3            # ±3 hrs
+SENSITIVITY_PM_HOURS: Final[int] = 2            # ±3 hrs
 SENSITIVITY_HEADCOUNT: Final[int] = 2           # ±2 per region
+SENSITIVITY_ADJ_MONTHS: Final[int] = 2          # ±2 months
 
 # ── Chart styling ───────────────────────────────────────────────────
 CHART_FIGSIZE_WIDE: Final[tuple[int, int]] = (13, 5)
@@ -38,7 +39,7 @@ DEMO_REGIONS: Final[list[str]] = ["NC - Central"]
 
 def build_demo_preset() -> dict:
     """Generate a demo preset with randomised end date, adjustment timing, and headcount."""
-    extra_months = random.randint(1, 10)
+    extra_months = random.randint(1, 12)
     end_year = DEFAULT_END_DATE.year + (DEFAULT_END_DATE.month + extra_months - 1) // 12
     end_month = (DEFAULT_END_DATE.month + extra_months - 1) % 12 + 1
     end_date = date(end_year, end_month, 1)
@@ -52,7 +53,7 @@ def build_demo_preset() -> dict:
     adj_month = (DEFAULT_START_DATE.month + adj_offset - 1) % 12 + 1
     adj_start = date(adj_year, adj_month, 1)
 
-    adjustments = {r: random.randint(3, 17) for r in DEMO_REGIONS}
+    adjustments = {r: random.randint(3, 9) for r in DEMO_REGIONS}
 
     return {
         "scenario": {
