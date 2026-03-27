@@ -145,6 +145,26 @@ def _thousands_formatter(x: float, _pos: int) -> str:
     return f"{x:,.0f}"
 
 
+def _draw_adjustment_line(ax, adjustment_start_date) -> None:
+    """Draw a vertical indicator line at the headcount adjustment start date."""
+    if adjustment_start_date is None:
+        return
+    adj_dt = pd.Timestamp(adjustment_start_date).normalize().replace(day=1)
+    ax.axvline(adj_dt, linewidth=1.5, color=YELLOW, linestyle="--", alpha=0.7, zorder=5)
+    ax.annotate(
+        "HC Adj. Start",
+        xy=(adj_dt, ax.get_ylim()[1]),
+        xytext=(6, -4),
+        textcoords="offset points",
+        fontsize=8,
+        fontweight="bold",
+        color=NAVY,
+        rotation=90,
+        va="top",
+        ha="left",
+    )
+
+
 def _finalize(fig: Figure) -> Figure:
     fig.autofmt_xdate()
     fig.tight_layout()
@@ -161,6 +181,7 @@ def _line_chart(
     title_prefix: str,
     region_label: str,
     monthly: pd.DataFrame | None = None,
+    adjustment_start_date=None,
 ) -> Figure | None:
     """Shared implementation for baseline / scenario supply-vs-demand charts."""
     if monthly is None:
@@ -233,6 +254,8 @@ def _line_chart(
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(_thousands_formatter))
     ax.legend(loc="upper left", framealpha=0.0)
 
+    _draw_adjustment_line(ax, adjustment_start_date)
+
     return _finalize(fig)
 
 
@@ -248,8 +271,9 @@ def scenario_supply_demand_with_gap(
     df: pd.DataFrame,
     region_label: str = "All regions",
     monthly: pd.DataFrame | None = None,
+    adjustment_start_date=None,
 ) -> Figure | None:
-    return _line_chart(df, "SCENARIO_SUPPLY", "SCENARIO_GAP", "Scenario", region_label, monthly=monthly)
+    return _line_chart(df, "SCENARIO_SUPPLY", "SCENARIO_GAP", "Scenario", region_label, monthly=monthly, adjustment_start_date=adjustment_start_date)
 
 
 # ── Gap bar chart ────────────────────────────────────────────────────
@@ -331,6 +355,7 @@ def backlog_trend_chart(
     region_label: str = "All regions",
     backlog: float = 0,
     monthly: pd.DataFrame | None = None,
+    adjustment_start_date=None,
 ) -> Figure | None:
     """Cumulative backlog (hours) on left axis, normalised backlog on right axis."""
     if monthly is None:
@@ -442,6 +467,8 @@ def backlog_trend_chart(
         framealpha=0.0,
     )
 
+    _draw_adjustment_line(ax_hours, adjustment_start_date)
+
     return _finalize(fig)
 
 
@@ -454,6 +481,7 @@ def sensitivity_fan_chart(
     envelope_max: pd.Series,
     param_results: list,
     region_label: str = "All regions",
+    adjustment_start_date=None,
 ) -> Figure | None:
     """Fan chart: base backlog trend with shaded sensitivity envelope."""
     if base_monthly.empty:
@@ -551,6 +579,8 @@ def sensitivity_fan_chart(
         ncol=min(len(param_results) + 2, 4),
         framealpha=0.0,
     )
+
+    _draw_adjustment_line(ax, adjustment_start_date)
 
     return _finalize(fig)
 

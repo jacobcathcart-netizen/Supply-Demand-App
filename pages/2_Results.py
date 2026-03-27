@@ -238,7 +238,7 @@ with tab_baseline:
         st.info("No data to chart for the current filters.")
 
 with tab_scenario:
-    fig2 = scenario_supply_demand_with_gap(filtered, region_label=region_label, monthly=base_monthly_no_backlog)
+    fig2 = scenario_supply_demand_with_gap(filtered, region_label=region_label, monthly=base_monthly_no_backlog, adjustment_start_date=adjustment_start_date)
     if fig2:
         st.caption(
             f"Line chart: scenario supply ({filtered['SCENARIO_SUPPLY'].sum():,.0f} hrs) "
@@ -262,7 +262,7 @@ with tab_gap:
         st.info("No data to chart for the current filters.")
 
 with tab_backlog:
-    fig4 = backlog_trend_chart(filtered, region_label=region_label, backlog=backlog, monthly=base_monthly_with_backlog)
+    fig4 = backlog_trend_chart(filtered, region_label=region_label, backlog=backlog, monthly=base_monthly_with_backlog, adjustment_start_date=adjustment_start_date)
     if fig4:
         st.caption(
             f"Dual-axis chart: cumulative backlog trend and normalized backlog "
@@ -275,6 +275,7 @@ with tab_backlog:
 
 with tab_sensitivity:
     from config import (
+        SENSITIVITY_ADJ_MONTHS,
         SENSITIVITY_CM_HOURS,
         SENSITIVITY_HEADCOUNT,
         SENSITIVITY_PCT_DECREASE,
@@ -286,6 +287,7 @@ with tab_sensitivity:
     # ── Interactive sensitivity controls (outside form → instant reruns) ──
     _SENS_PARAMS = [
         ("Headcount adj.", "sens_hc", SENSITIVITY_HEADCOUNT, -50, 50, True),
+        ("Adj. month", "sens_adj_mo", SENSITIVITY_ADJ_MONTHS, 1, 12, False),
         ("Non-project %", "sens_pct", SENSITIVITY_PCT_DECREASE, 1, 50, False),
         ("Vacation days", "sens_vac", SENSITIVITY_VAC_DAYS, 1, 30, False),
         ("Sick days", "sens_sick", SENSITIVITY_SICK_DAYS, 1, 30, False),
@@ -313,6 +315,7 @@ with tab_sensitivity:
     sens_config = {
         "enabled": True,
         "headcount_delta": sens_values.get("sens_hc", 0),
+        "adj_months_delta": sens_values.get("sens_adj_mo", 0),
         "pct_decrease_delta": sens_values.get("sens_pct", 0) / 100 if "sens_pct" in sens_values else 0,
         "vac_days_delta": sens_values.get("sens_vac", 0) / 12 if "sens_vac" in sens_values else 0,
         "sick_days_delta": sens_values.get("sens_sick", 0) / 12 if "sens_sick" in sens_values else 0,
@@ -322,6 +325,7 @@ with tab_sensitivity:
 
     any_active = any(v != 0 for v in [
         sens_config["headcount_delta"],
+        sens_config["adj_months_delta"],
         sens_config["pct_decrease_delta"],
         sens_config["vac_days_delta"],
         sens_config["sick_days_delta"],
@@ -389,6 +393,7 @@ with tab_sensitivity:
                 envelope_max=sens_result.envelope_max,
                 param_results=sens_result.param_results,
                 region_label=region_label,
+                adjustment_start_date=adjustment_start_date,
             )
             if fig_fan:
                 st.caption(

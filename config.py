@@ -26,6 +26,7 @@ SENSITIVITY_SICK_DAYS: Final[int] = 1           # ±3 days/year
 SENSITIVITY_CM_HOURS: Final[int] = 4            # ±4 hrs
 SENSITIVITY_PM_HOURS: Final[int] = 2            # ±3 hrs
 SENSITIVITY_HEADCOUNT: Final[int] = 2           # ±2 per region
+SENSITIVITY_ADJ_MONTHS: Final[int] = 2          # ±2 months
 
 # ── Chart styling ───────────────────────────────────────────────────
 CHART_FIGSIZE_WIDE: Final[tuple[int, int]] = (13, 5)
