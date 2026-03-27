@@ -278,9 +278,13 @@ def _build_custom_demand_and_weights(
         start = pd.to_datetime(proj.get("START_DATE"))
         eligible = working_days[working_days["MONTH_START"] >= start]
         n_months = max(len(eligible), 1)
-        monthly_demand = proj["TOTAL_HOURS"] / n_months
+        # TOTAL_HOURS is yearly demand — normalize to the scenario duration,
+        # then distribute proportionally by working days per month.
+        scenario_demand = proj["TOTAL_HOURS"] * (n_months / 12)
+        total_working_days = max(eligible["BUSINESS_DAYS"].sum(), 1)
         for _, wd_row in eligible.iterrows():
             month_num = wd_row["MONTH_NUMBER"]
+            monthly_demand = scenario_demand * (wd_row["BUSINESS_DAYS"] / total_working_days)
             demand_rows.append(
                 {
                     "CCRID": proj["CCRID"],

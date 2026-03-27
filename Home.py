@@ -3,11 +3,8 @@
 import streamlit as st
 
 from components.branding import (
-    GRAY_600,
-    HERO_IMAGE_PATH,
     LIGHT_BLUE,
     NAVY,
-    TEAL,
     apply_branding,
     status_badge,
 )
@@ -24,31 +21,41 @@ apply_branding()
 
 # ── Hero banner ──────────────────────────────────────────────────────
 
-hero_left, hero_right = st.columns([3, 2], gap="large")
+st.markdown(
+    f"""
+    <div style="
+        border-radius: 12px; overflow: hidden; margin-bottom: 2rem;
+        background: linear-gradient(135deg, {LIGHT_BLUE} 0%, {NAVY} 100%);
+        padding: 3rem 2.5rem;
+    ">
+        <h1 style="border-bottom:none;color:white;font-family:Tahoma,Geneva,sans-serif;
+                   font-weight:700;font-size:2.4rem;margin-bottom:0.5rem;">
+            Staffing Supply &amp; Demand
+        </h1>
+        <p style="color:rgba(255,255,255,0.85);font-size:1rem;max-width:600px;margin:0;
+                  font-family:Tahoma,Geneva,sans-serif;">
+            Model workforce capacity against project demand. Configure scenarios,
+            adjust headcount, and analyse supply gaps across regions.
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
-with hero_left:
-    st.markdown(
-        f"""
-        <div style="padding:1rem 0;">
-            <h1 style="border-bottom:none;margin-bottom:0.5rem;font-size:2.2rem;">
-                Staffing Supply &amp; Demand
-            </h1>
-            <p style="color:{GRAY_600};font-size:1.05rem;font-family:Tahoma,sans-serif;
-                      margin:0;max-width:640px;">
-                Model workforce capacity against project demand. Configure scenarios,
-                adjust headcount, and analyse supply gaps across regions.
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+# ── Auto-connect to Snowflake on open ────────────────────────────────
 
-with hero_right:
-    if HERO_IMAGE_PATH.exists():
-        st.image(
-            str(HERO_IMAGE_PATH),
-            caption="Rutherford Farm — Cypress Creek Renewables",
+try:
+    with st.spinner("Connecting to Snowflake..."):
+        regions_df = get_regions_df()
+    if not regions_df.empty:
+        st.markdown(
+            status_badge(f"Connected — {len(regions_df)} regions loaded"),
+            unsafe_allow_html=True,
         )
+    else:
+        st.warning("Connected, but no regions returned.")
+except Exception as exc:
+    st.error(f"Snowflake connection failed: {exc}")
 
 # ── Quick actions ────────────────────────────────────────────────────
 
@@ -80,7 +87,7 @@ with st.expander("System Diagnostics", expanded=False):
             try:
                 info = get_connection_info()
                 st.dataframe(info, hide_index=True)
-                st.markdown(status_badge("Connected", TEAL), unsafe_allow_html=True)
+                st.markdown(status_badge("Connected"), unsafe_allow_html=True)
             except Exception as exc:
                 st.error(f"Connection failed: {exc}")
 
@@ -93,7 +100,7 @@ with st.expander("System Diagnostics", expanded=False):
                 else:
                     st.dataframe(regions_df, hide_index=True)
                     st.markdown(
-                        status_badge(f"{len(regions_df)} regions loaded", TEAL),
+                        status_badge(f"{len(regions_df)} regions loaded"),
                         unsafe_allow_html=True,
                     )
             except Exception as exc:

@@ -12,13 +12,16 @@ from matplotlib.figure import Figure
 
 from components.branding import (
     GOLD,
+    GRAY,
     GRAY_200,
-    GRAY_600,
     LIGHT_BLUE,
+    LIGHT_GRAY,
     NAVY,
     ORANGE,
     TEAL,
+    WARM_WHITE,
     WHITE,
+    YELLOW,
 )
 from config import BAR_WIDTH_DAYS, CHART_FIGSIZE_WIDE
 
@@ -27,26 +30,29 @@ from config import BAR_WIDTH_DAYS, CHART_FIGSIZE_WIDE
 plt.rcParams.update(
     {
         "font.family": ["Tahoma", "DejaVu Sans", "sans-serif"],
-        "axes.facecolor": WHITE,
-        "figure.facecolor": WHITE,
-        "axes.edgecolor": GRAY_200,
+        "axes.facecolor": WARM_WHITE,
+        "figure.facecolor": WARM_WHITE,
+        "axes.edgecolor": LIGHT_GRAY,
         "axes.labelcolor": NAVY,
-        "xtick.color": GRAY_600,
-        "ytick.color": GRAY_600,
+        "xtick.color": GRAY,
+        "ytick.color": GRAY,
         "text.color": NAVY,
-        "grid.color": GRAY_200,
-        "grid.alpha": 0.5,
-        "grid.linewidth": 0.5,
+        "grid.color": LIGHT_GRAY,
+        "grid.alpha": 0.7,
+        "grid.linewidth": 0.4,
+        "grid.linestyle": "--",
         "axes.grid": True,
         "axes.grid.axis": "y",
         "axes.spines.top": False,
         "axes.spines.right": False,
-        "legend.framealpha": 0.95,
-        "legend.edgecolor": GRAY_200,
+        "axes.spines.left": False,
+        "legend.framealpha": 0.0,
+        "legend.edgecolor": "none",
         "legend.fontsize": 9,
-        "axes.titlesize": 14,
-        "axes.titleweight": "bold",
+        "axes.titlesize": 13,
+        "axes.titleweight": 600,
         "axes.labelsize": 10,
+        "figure.dpi": 150,
     }
 )
 
@@ -166,7 +172,10 @@ def _line_chart(
         monthly["DATE"],
         monthly[supply_col],
         marker="o",
-        markersize=6,
+        markersize=7,
+        markerfacecolor=WARM_WHITE,
+        markeredgecolor=LIGHT_BLUE,
+        markeredgewidth=2,
         color=LIGHT_BLUE,
         linewidth=2.5,
         label=f"{title_prefix} Supply",
@@ -177,7 +186,10 @@ def _line_chart(
         monthly["DATE"],
         monthly["DEMAND"],
         marker="D",
-        markersize=5,
+        markersize=6,
+        markerfacecolor=WARM_WHITE,
+        markeredgecolor=ORANGE,
+        markeredgewidth=2,
         color=ORANGE,
         linewidth=2.5,
         label="Demand",
@@ -189,6 +201,9 @@ def _line_chart(
         monthly[gap_col],
         marker="s",
         markersize=5,
+        markerfacecolor=WARM_WHITE,
+        markeredgecolor=NAVY,
+        markeredgewidth=2,
         color=NAVY,
         linewidth=2,
         linestyle="--",
@@ -207,13 +222,13 @@ def _line_chart(
     )
 
     # Zero line
-    ax.axhline(0, linewidth=0.8, color=GRAY_600, linestyle="-", alpha=0.3)
+    ax.axhline(0, linewidth=0.8, color=GRAY, linestyle="-", alpha=0.3)
 
     ax.set_title(f"{title_prefix} Supply vs Demand — {region_label}")
     ax.set_xlabel("")
     ax.set_ylabel("Hours")
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(_thousands_formatter))
-    ax.legend(loc="upper left", framealpha=0.95)
+    ax.legend(loc="upper left", framealpha=0.0)
 
     return _finalize(fig)
 
@@ -249,7 +264,7 @@ def gap_bar_chart(
 
     fig, ax = plt.subplots(figsize=CHART_FIGSIZE_WIDE)
 
-    bar_kwargs = dict(width=BAR_WIDTH_DAYS, edgecolor="white", linewidth=0.5, zorder=2)
+    bar_kwargs = dict(width=BAR_WIDTH_DAYS, edgecolor="none", linewidth=0, zorder=2)
 
     bars_base = ax.bar(
         base_months["DATE"],
@@ -295,7 +310,7 @@ def gap_bar_chart(
         loc="upper center",
         bbox_to_anchor=(0.5, -0.10),
         ncol=2,
-        framealpha=0.95,
+        framealpha=0.0,
     )
 
     return _finalize(fig)
@@ -414,7 +429,7 @@ def backlog_trend_chart(
         loc="upper center",
         bbox_to_anchor=(0.5, -0.10),
         ncol=2,
-        framealpha=0.95,
+        framealpha=0.0,
     )
 
     return _finalize(fig)
