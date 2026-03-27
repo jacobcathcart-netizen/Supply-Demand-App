@@ -8,9 +8,11 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import pandas as pd
+import streamlit as st
 from matplotlib.figure import Figure
 
 from components.branding import (
+    CHART_COLORS,
     GOLD,
     GRAY,
     GRAY_200,
@@ -23,7 +25,7 @@ from components.branding import (
     WHITE,
     YELLOW,
 )
-from config import BAR_WIDTH_DAYS, CHART_FIGSIZE_WIDE
+from config import BAR_WIDTH_DAYS, CHART_FIGSIZE_WIDE, CHART_FIGSIZE_TALL
 
 # ── Matplotlib global defaults ───────────────────────────────────────
 
@@ -66,6 +68,7 @@ def get_region_backlog(backlog_df: pd.DataFrame, region_label: str) -> float:
     return float(match.iloc[0]) if not match.empty else 0.0
 
 
+@st.cache_data(show_spinner=False)
 def _monthly_totals(df: pd.DataFrame, backlog: float = 0) -> pd.DataFrame:
     """Aggregate scenario results to monthly level and compute cumulative backlog."""
     if df.empty:
@@ -129,12 +132,10 @@ def _split_base_adjusted(
     monthly: pd.DataFrame,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Split monthly frame into base (no adjustment) and adjusted rows."""
-    monthly["IS_ADJUSTED"] = monthly["SUPPLY_DELTA"] != 0
-    monthly["DISPLAY_GAP"] = monthly["SCENARIO_GAP"].where(
-        monthly["IS_ADJUSTED"],
-        monthly["BASE_GAP"],
-    )
-    return monthly[~monthly["IS_ADJUSTED"]], monthly[monthly["IS_ADJUSTED"]]
+    is_adjusted = monthly["SUPPLY_DELTA"] != 0
+    display_gap = monthly["SCENARIO_GAP"].where(is_adjusted, monthly["BASE_GAP"])
+    m = monthly.assign(IS_ADJUSTED=is_adjusted, DISPLAY_GAP=display_gap)
+    return m[~m["IS_ADJUSTED"]], m[m["IS_ADJUSTED"]]
 
 
 def _thousands_formatter(x: float, _pos: int) -> str:
@@ -159,9 +160,11 @@ def _line_chart(
     gap_col: str,
     title_prefix: str,
     region_label: str,
+    monthly: pd.DataFrame | None = None,
 ) -> Figure | None:
     """Shared implementation for baseline / scenario supply-vs-demand charts."""
-    monthly = _monthly_totals(df)
+    if monthly is None:
+        monthly = _monthly_totals(df)
     if monthly.empty:
         return None
 
@@ -236,15 +239,17 @@ def _line_chart(
 def baseline_supply_demand_with_gap(
     df: pd.DataFrame,
     region_label: str = "All regions",
+    monthly: pd.DataFrame | None = None,
 ) -> Figure | None:
-    return _line_chart(df, "BASE_SUPPLY", "BASE_GAP", "Baseline", region_label)
+    return _line_chart(df, "BASE_SUPPLY", "BASE_GAP", "Baseline", region_label, monthly=monthly)
 
 
 def scenario_supply_demand_with_gap(
     df: pd.DataFrame,
     region_label: str = "All regions",
+    monthly: pd.DataFrame | None = None,
 ) -> Figure | None:
-    return _line_chart(df, "SCENARIO_SUPPLY", "SCENARIO_GAP", "Scenario", region_label)
+    return _line_chart(df, "SCENARIO_SUPPLY", "SCENARIO_GAP", "Scenario", region_label, monthly=monthly)
 
 
 # ── Gap bar chart ────────────────────────────────────────────────────
@@ -254,9 +259,11 @@ def gap_bar_chart(
     df: pd.DataFrame,
     region_label: str = "All regions",
     backlog: float = 0,
+    monthly: pd.DataFrame | None = None,
 ) -> Figure | None:
     """Baseline vs scenario gap as side-by-side bars with data labels."""
-    monthly = _monthly_totals(df, backlog=backlog)
+    if monthly is None:
+        monthly = _monthly_totals(df, backlog=backlog)
     if monthly.empty:
         return None
 
@@ -323,14 +330,17 @@ def backlog_trend_chart(
     df: pd.DataFrame,
     region_label: str = "All regions",
     backlog: float = 0,
+    monthly: pd.DataFrame | None = None,
 ) -> Figure | None:
     """Cumulative backlog (hours) on left axis, normalised backlog on right axis."""
-    monthly = _monthly_totals(df, backlog=backlog)
+    if monthly is None:
+        monthly = _monthly_totals(df, backlog=backlog)
     if monthly.empty:
         return None
 
-    monthly["NORMALIZED_BACKLOG"] = (
-        monthly["SCENARIO_GAP_CUMSUM"]
+    # Use assign to avoid mutating the shared monthly DataFrame
+    monthly = monthly.assign(
+        NORMALIZED_BACKLOG=monthly["SCENARIO_GAP_CUMSUM"]
         / monthly["SCENARIO_SUPPLY"].replace(0, float("nan"))
     )
 
@@ -429,6 +439,219 @@ def backlog_trend_chart(
         loc="upper center",
         bbox_to_anchor=(0.5, -0.10),
         ncol=2,
+        framealpha=0.0,
+    )
+
+    return _finalize(fig)
+
+
+# ── Sensitivity charts ───────────────────────────────────────────────
+
+
+def sensitivity_fan_chart(
+    base_monthly: pd.DataFrame,
+    envelope_min: pd.Series,
+    envelope_max: pd.Series,
+    param_results: list,
+    region_label: str = "All regions",
+) -> Figure | None:
+    """Fan chart: base backlog trend with shaded sensitivity envelope."""
+    if base_monthly.empty:
+        return None
+
+    dates = base_monthly["DATE"]
+    base_backlog = base_monthly["SCENARIO_GAP_CUMSUM"]
+
+    fig, ax = plt.subplots(figsize=CHART_FIGSIZE_WIDE)
+
+    # Outer envelope
+    ax.fill_between(
+        dates,
+        envelope_min.values,
+        envelope_max.values,
+        alpha=0.25,
+        color=LIGHT_GRAY,
+        label="Sensitivity range",
+        zorder=1,
+    )
+
+    # Individual param low/high lines
+    colors = CHART_COLORS[:]
+    for i, pr in enumerate(param_results):
+        color = colors[i % len(colors)]
+        ax.plot(
+            pr.low_monthly["DATE"],
+            pr.low_monthly["SCENARIO_GAP_CUMSUM"],
+            color=color,
+            linewidth=1.0,
+            alpha=0.45,
+            linestyle="--",
+            marker="o",
+            markersize=4,
+            markerfacecolor=WARM_WHITE,
+            markeredgecolor=color,
+            markeredgewidth=1.5,
+            zorder=2,
+        )
+        ax.plot(
+            pr.high_monthly["DATE"],
+            pr.high_monthly["SCENARIO_GAP_CUMSUM"],
+            color=color,
+            linewidth=1.0,
+            alpha=0.45,
+            linestyle="--",
+            marker="o",
+            markersize=4,
+            markerfacecolor=WARM_WHITE,
+            markeredgecolor=color,
+            markeredgewidth=1.5,
+            label=f"{pr.name} (±)",
+            zorder=2,
+        )
+
+    # Base case line (on top)
+    ax.plot(
+        dates,
+        base_backlog,
+        marker="o",
+        markersize=7,
+        markerfacecolor=WARM_WHITE,
+        markeredgecolor=ORANGE,
+        markeredgewidth=2,
+        color=ORANGE,
+        linewidth=2.5,
+        label="Base case",
+        zorder=4,
+    )
+    ax.fill_between(dates, base_backlog, alpha=0.06, color=ORANGE)
+
+    # Data labels on base case
+    for i in range(len(base_monthly)):
+        ax.annotate(
+            f"{base_backlog.iloc[i]:,.0f}",
+            xy=(dates.iloc[i], base_backlog.iloc[i]),
+            xytext=(0, 10),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            fontsize=7.5,
+            fontweight="bold",
+            color=NAVY,
+        )
+
+    ax.axhline(0, linewidth=0.8, color=GRAY, linestyle="-", alpha=0.3)
+    ax.set_ylim(*_padded_limits(pd.Series(envelope_max.values), padding_frac=0.15))
+    ax.set_title(f"Backlog Sensitivity — {region_label}")
+    ax.set_xlabel("")
+    ax.set_ylabel("Cumulative Backlog (hrs)")
+    ax.yaxis.set_major_formatter(mticker.FuncFormatter(_thousands_formatter))
+    ax.legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.10),
+        ncol=min(len(param_results) + 2, 4),
+        framealpha=0.0,
+    )
+
+    return _finalize(fig)
+
+
+def sensitivity_tornado_chart(
+    param_results: list,
+    base_ending_backlog: float,
+) -> Figure | None:
+    """Tornado chart: rank inputs by impact on ending backlog."""
+    if not param_results:
+        return None
+
+    # Sort by total range (widest at top)
+    sorted_params = sorted(
+        param_results,
+        key=lambda p: abs(p.high_ending_backlog - p.low_ending_backlog),
+    )
+
+    names = [p.name for p in sorted_params]
+    lows = [p.low_ending_backlog for p in sorted_params]
+    highs = [p.high_ending_backlog for p in sorted_params]
+
+    fig, ax = plt.subplots(figsize=(CHART_FIGSIZE_WIDE[0], max(3, len(names) * 0.8)))
+
+    y_pos = range(len(names))
+
+    # Bars extending left and right from base case
+    low_widths = [low - base_ending_backlog for low in lows]
+    high_widths = [high - base_ending_backlog for high in highs]
+
+    ax.barh(
+        y_pos,
+        low_widths,
+        left=base_ending_backlog,
+        color=LIGHT_BLUE,
+        edgecolor="none",
+        height=0.55,
+        label="Low scenario",
+        zorder=2,
+    )
+    ax.barh(
+        y_pos,
+        high_widths,
+        left=base_ending_backlog,
+        color=ORANGE,
+        edgecolor="none",
+        height=0.55,
+        label="High scenario",
+        zorder=2,
+    )
+
+    # Base case reference line
+    ax.axvline(
+        base_ending_backlog,
+        linewidth=1.5,
+        color=NAVY,
+        linestyle="--",
+        alpha=0.7,
+        zorder=3,
+        label=f"Base ({base_ending_backlog:,.0f})",
+    )
+
+    # Data labels
+    for i, (low, high) in enumerate(zip(lows, highs)):
+        # Low label
+        x_low = min(low, base_ending_backlog)
+        ax.text(
+            x_low - (abs(high - low) * 0.02 + 50),
+            i,
+            f"{low:,.0f}",
+            va="center",
+            ha="right",
+            fontsize=8,
+            fontweight="bold",
+            color=NAVY,
+        )
+        # High label
+        x_high = max(high, base_ending_backlog)
+        ax.text(
+            x_high + (abs(high - low) * 0.02 + 50),
+            i,
+            f"{high:,.0f}",
+            va="center",
+            ha="left",
+            fontsize=8,
+            fontweight="bold",
+            color=NAVY,
+        )
+
+    ax.set_yticks(list(y_pos))
+    ax.set_yticklabels(names)
+    ax.xaxis.grid(True)
+    ax.yaxis.grid(False)
+    ax.spines["left"].set_visible(False)
+    ax.set_title("Impact on Ending Backlog")
+    ax.set_xlabel("Ending Backlog (hrs)")
+    ax.xaxis.set_major_formatter(mticker.FuncFormatter(_thousands_formatter))
+    ax.legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.12),
+        ncol=3,
         framealpha=0.0,
     )
 

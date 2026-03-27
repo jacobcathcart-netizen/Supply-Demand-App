@@ -19,6 +19,14 @@ DEFAULT_CM_HOURS: Final[int] = 14
 DEFAULT_PM_HOURS: Final[int] = 10
 HOURS_PER_DAY: Final[int] = 8
 
+# ── Sensitivity defaults (absolute deltas) ────────────────────────
+SENSITIVITY_PCT_DECREASE: Final[int] = 5        # ±5 percentage points
+SENSITIVITY_VAC_DAYS: Final[int] = 5            # ±5 days/year
+SENSITIVITY_SICK_DAYS: Final[int] = 3           # ±3 days/year
+SENSITIVITY_CM_HOURS: Final[int] = 4            # ±4 hrs
+SENSITIVITY_PM_HOURS: Final[int] = 3            # ±3 hrs
+SENSITIVITY_HEADCOUNT: Final[int] = 2           # ±2 per region
+
 # ── Chart styling ───────────────────────────────────────────────────
 CHART_FIGSIZE_WIDE: Final[tuple[int, int]] = (13, 5)
 CHART_FIGSIZE_TALL: Final[tuple[int, int]] = (12, 7)
