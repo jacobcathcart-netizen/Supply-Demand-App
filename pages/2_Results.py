@@ -6,8 +6,6 @@ import pandas as pd
 import streamlit as st
 
 from components.branding import (
-    GRAY_600,
-    NAVY,
     apply_branding,
     section_header,
 )
@@ -173,7 +171,7 @@ if not filtered_backlog.empty:
 backlog = float(filtered_backlog["HOUR_BACKLOG"].sum()) if not filtered_backlog.empty else 0.0
 
 scenario_ending_backlog = max(backlog - filtered["SCENARIO_GAP"].sum(), 0.0)
-backlog_delta = backlog - scenario_ending_backlog
+backlog_delta = scenario_ending_backlog - backlog
 
 # ── KPI metrics ─────────────────────────────────────────────────────
 
@@ -181,6 +179,7 @@ supply_delta = filtered["SUPPLY_DELTA"].sum()
 gap_delta = filtered["SCENARIO_GAP"].sum() - filtered["BASE_GAP"].sum()
 
 # Row 1 — Supply & Demand
+section_header("Supply & Demand")
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Baseline Supply", f"{filtered['BASE_SUPPLY'].sum():,.0f} hrs")
 c2.metric("Scenario Supply", f"{filtered['SCENARIO_SUPPLY'].sum():,.0f} hrs")
@@ -193,6 +192,8 @@ c4.metric(
 )
 
 # Row 2 — Gap & Backlog
+st.markdown('<div style="height:0.75rem;"></div>', unsafe_allow_html=True)
+section_header("Gap & Backlog")
 c5, c6, c7, c8 = st.columns(4)
 c5.metric("Baseline Gap", f"{filtered['BASE_GAP'].sum():,.0f} hrs")
 c6.metric(
@@ -201,10 +202,10 @@ c6.metric(
     delta=f"{gap_delta:+,.0f} vs baseline",
     delta_color="normal",
 )
-c7.metric("Ending Backlog", f"{scenario_ending_backlog:,.0f} hrs")
+c7.metric("Initial Backlog", f"{backlog:,.0f} hrs")
 c8.metric(
-    "Backlog Change",
-    f"{backlog_delta:,.0f} hrs",
+    "Ending Backlog",
+    f"{scenario_ending_backlog:,.0f} hrs",
     delta=f"{backlog_delta:+,.0f}",
     delta_color="inverse",
 )

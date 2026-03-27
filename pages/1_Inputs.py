@@ -22,7 +22,14 @@ from config import (
     DEFAULT_START_DATE,
     DEFAULT_VAC_DAYS_PER_YEAR,
 )
-from data.snowflake import get_backlog, get_demand_weight, get_projects, get_regions_df
+from data.snowflake import (
+    get_backlog,
+    get_cm_backlog,
+    get_demand_weight,
+    get_pm_backlog,
+    get_projects,
+    get_regions_df,
+)
 
 st.set_page_config(
     page_title="Inputs | CCR",
@@ -255,11 +262,123 @@ with tab_params:
 
     with st.expander("Backlog Preview", expanded=False):
         try:
+            import matplotlib.pyplot as plt
+            from components.branding import LIGHT_BLUE, NAVY, YELLOW, WARM_WHITE, GRAY
+
             backlog_preview = get_backlog(pm_assumption, cm_assumption)
+            if not backlog_preview.empty:
+                for col in ("COUNT", "HOURS"):
+                    if col in backlog_preview.columns:
+                        backlog_preview[col] = pd.to_numeric(backlog_preview[col], errors="coerce").fillna(0)
             if backlog_preview.empty:
                 st.info("No backlog data available.")
             else:
-                st.dataframe(backlog_preview, hide_index=True)
+                # ── Load PM / CM breakdown ────────────────────────
+                pm_df = get_pm_backlog()
+                cm_df = get_cm_backlog()
+                pm_df["COUNT"] = pd.to_numeric(pm_df["COUNT"], errors="coerce").fillna(0)
+                cm_df["COUNT"] = pd.to_numeric(cm_df["COUNT"], errors="coerce").fillna(0)
+                pm_items = int(pm_df["COUNT"].sum())
+                cm_items = int(cm_df["COUNT"].sum())
+                pm_hours = pm_items * pm_assumption
+                cm_hours = cm_items * cm_assumption
+
+                # ── Summary metrics ───────────────────────────────
+                total_items = int(backlog_preview["COUNT"].sum())
+                total_hours = backlog_preview["HOURS"].sum()
+                n_regions = backlog_preview["REGION"].nunique()
+                n_projects = backlog_preview["CCRID"].nunique()
+
+                m1, m2, m3, m4, m5, m6 = st.columns(6)
+                m1.metric("Total Jobs", f"{total_items:,}")
+                m2.metric("Total Hours", f"{total_hours:,.0f}")
+                m3.metric("PM Jobs", f"{pm_items:,}", delta=f"{pm_hours:,.0f} hrs")
+                m4.metric("CM Jobs", f"{cm_items:,}", delta=f"{cm_hours:,.0f} hrs")
+                m5.metric("Regions", f"{n_regions}")
+                m6.metric("Projects", f"{n_projects}")
+
+                # ── Charts: by-region bar + PM vs CM breakdown ────
+                by_region = (
+                    backlog_preview.groupby("REGION", as_index=False)
+                    .agg(ITEMS=("COUNT", "sum"), HOURS=("HOURS", "sum"))
+                    .sort_values("HOURS", ascending=True)
+                )
+
+                chart_left, chart_right = st.columns(2)
+
+                with chart_left:
+                    fig1, ax1 = plt.subplots(figsize=(6, max(3, len(by_region) * 0.4)))
+                    ax1.barh(
+                        by_region["REGION"], by_region["HOURS"],
+                        color=LIGHT_BLUE, edgecolor="none", height=0.6,
+                    )
+                    for i, (hrs, region) in enumerate(
+                        zip(by_region["HOURS"], by_region["REGION"])
+                    ):
+                        ax1.text(
+                            hrs + total_hours * 0.01, i, f"{hrs:,.0f}",
+                            va="center", fontsize=8, fontweight="bold", color=NAVY,
+                        )
+                    ax1.set_title("Backlog Hours by Region", fontsize=12, fontweight=600)
+                    ax1.set_xlabel("")
+                    ax1.spines["top"].set_visible(False)
+                    ax1.spines["right"].set_visible(False)
+                    ax1.spines["bottom"].set_visible(False)
+                    ax1.tick_params(axis="x", labelbottom=False)
+                    ax1.tick_params(axis="y", labelsize=9)
+                    fig1.tight_layout()
+                    st.pyplot(fig1, clear_figure=True)
+
+                with chart_right:
+                    try:
+                        pm_by_region = (
+                            pm_df.groupby("REGION", as_index=False)["COUNT"]
+                            .sum()
+                            .rename(columns={"COUNT": "PM"})
+                        )
+                        cm_by_region = (
+                            cm_df.groupby("REGION", as_index=False)["COUNT"]
+                            .sum()
+                            .rename(columns={"COUNT": "CM"})
+                        )
+                        breakdown = pm_by_region.merge(cm_by_region, on="REGION", how="outer").fillna(0)
+                        breakdown["PM_HRS"] = breakdown["PM"] * pm_assumption
+                        breakdown["CM_HRS"] = breakdown["CM"] * cm_assumption
+                        breakdown = breakdown.sort_values("REGION")
+
+                        fig2, ax2 = plt.subplots(figsize=(6, max(3, len(breakdown) * 0.4)))
+                        y_pos = range(len(breakdown))
+                        ax2.barh(
+                            breakdown["REGION"], breakdown["PM_HRS"],
+                            color=NAVY, edgecolor="none", height=0.6, label="PM",
+                        )
+                        ax2.barh(
+                            breakdown["REGION"], breakdown["CM_HRS"],
+                            left=breakdown["PM_HRS"],
+                            color=YELLOW, edgecolor="none", height=0.6, label="CM",
+                        )
+                        ax2.set_title("PM vs CM Hours by Region", fontsize=12, fontweight=600)
+                        ax2.set_xlabel("")
+                        ax2.spines["top"].set_visible(False)
+                        ax2.spines["right"].set_visible(False)
+                        ax2.spines["bottom"].set_visible(False)
+                        ax2.tick_params(axis="x", labelbottom=False)
+                        ax2.tick_params(axis="y", labelsize=9)
+                        ax2.legend(loc="lower right", fontsize=9)
+                        fig2.tight_layout()
+                        st.pyplot(fig2, clear_figure=True)
+                    except Exception:
+                        st.caption("PM/CM breakdown unavailable.")
+
+                # ── Top projects table ────────────────────────────
+                section_header("Top Projects by Backlog")
+                top_projects = (
+                    backlog_preview.sort_values("HOURS", ascending=False)
+                    .head(10)
+                    .reset_index(drop=True)
+                )
+                st.dataframe(top_projects, hide_index=True, use_container_width=True)
+
         except Exception as exc:
             st.warning(f"Could not load backlog data: {exc}")
 
