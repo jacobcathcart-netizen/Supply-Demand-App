@@ -89,7 +89,7 @@ def _load_backlog(pm_hours: int, cm_hours: int) -> pd.DataFrame:
     df = get_backlog(pm_hours, cm_hours).copy()
     if df.empty:
         return df
-    df.columns = ["REGION", "PROJECT_NAME", "COUNT_BACKLOG", "HOUR_BACKLOG"]
+    df.columns = ["REGION", "PROJECT_NAME", "CCRID", "COUNT_BACKLOG", "HOUR_BACKLOG"]
     return df
 
 
@@ -155,10 +155,14 @@ if show_only_gaps:
 
 backlog_df = _load_backlog(scenario_inputs["pm_assumption"], scenario_inputs["cm_assumption"])
 
-# Filter backlog to match the region and project selections
+# Filter backlog to match the region, project, and exclusion selections
 filtered_backlog = backlog_df.copy() if not backlog_df.empty else pd.DataFrame()
 if not filtered_backlog.empty:
     filtered_backlog = filtered_backlog[filtered_backlog["REGION"].isin(regions)]
+    if excluded_ccrids:
+        filtered_backlog = filtered_backlog[
+            ~filtered_backlog["CCRID"].isin(excluded_ccrids)
+        ]
     if region_filter != "All":
         filtered_backlog = filtered_backlog[filtered_backlog["REGION"] == region_filter]
     if selected_projects:
@@ -168,9 +172,8 @@ if not filtered_backlog.empty:
 
 backlog = float(filtered_backlog["HOUR_BACKLOG"].sum()) if not filtered_backlog.empty else 0.0
 
-baseline_ending_backlog = backlog - filtered["BASE_GAP"].sum()
-scenario_ending_backlog = backlog - filtered["SCENARIO_GAP"].sum()
-backlog_delta = scenario_ending_backlog - baseline_ending_backlog
+scenario_ending_backlog = max(backlog - filtered["SCENARIO_GAP"].sum(), 0.0)
+backlog_delta = backlog - scenario_ending_backlog
 
 # ── KPI metrics ─────────────────────────────────────────────────────
 

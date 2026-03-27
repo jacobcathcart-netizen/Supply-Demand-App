@@ -83,12 +83,23 @@ def _monthly_totals(df: pd.DataFrame, backlog: float = 0) -> pd.DataFrame:
     )
     monthly["DATE"] = pd.to_datetime(monthly["DATE"])
 
-    monthly["BASE_GAP_CUMSUM"] = (
-        -pd.to_numeric(monthly["BASE_GAP"], errors="coerce").cumsum()
-    )
-    monthly["SCENARIO_GAP_CUMSUM"] = backlog + (
-        -pd.to_numeric(monthly["SCENARIO_GAP"], errors="coerce").cumsum()
-    )
+    # Walk month-by-month so backlog floors at 0 each step rather than
+    # allowing a simple cumsum to go negative and then clipping.
+    base_gap = pd.to_numeric(monthly["BASE_GAP"], errors="coerce")
+    scen_gap = pd.to_numeric(monthly["SCENARIO_GAP"], errors="coerce")
+
+    base_cumsum = []
+    scen_cumsum = []
+    prev_base = 0.0
+    prev_scen = backlog
+    for b, s in zip(base_gap, scen_gap):
+        prev_base = max(prev_base - b, 0.0)
+        prev_scen = max(prev_scen - s, 0.0)
+        base_cumsum.append(prev_base)
+        scen_cumsum.append(prev_scen)
+
+    monthly["BASE_GAP_CUMSUM"] = base_cumsum
+    monthly["SCENARIO_GAP_CUMSUM"] = scen_cumsum
     monthly["BACKLOG_AS_SUPPLY"] = (
         monthly["SCENARIO_GAP_CUMSUM"]
         / monthly["SCENARIO_SUPPLY"].replace(0, float("nan"))
