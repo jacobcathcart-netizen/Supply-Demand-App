@@ -38,7 +38,13 @@ def adjustment_inputs(
                 st.session_state[key] = int(saved_adjustments.get(region, 0))
             with col:
                 adjustments[region] = int(
-                    st.number_input(region, step=1, key=key)
+                    st.number_input(
+                        region,
+                        min_value=-100,
+                        step=1,
+                        key=key,
+                        help="Negative values reduce headcount",
+                    )
                 )
 
     return adjustments
