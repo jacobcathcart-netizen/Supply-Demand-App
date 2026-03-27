@@ -103,16 +103,20 @@ def run_scenario(
         weights = weights[~weights["CCRID"].isin(excluded_ccrids)]
         demand = demand[~demand["CCRID"].isin(excluded_ccrids)]
 
+    # Add custom projects to demand and weights
+    if custom_projects:
+        custom_demand, custom_weights = _build_custom_demand_and_weights(
+            custom_projects, working_days
+        )
+        demand = pd.concat([demand, custom_demand], ignore_index=True)
+        weights = pd.concat([weights, custom_weights], ignore_index=True)
+
+    # Recalculate allocation weights from demand proportions
+    if excluded_ccrids or custom_projects:
+        weights = _recalculate_weights_from_demand(weights, demand)
+
     allocated = _allocate_to_projects(expanded, weights)
     output = _assemble_output(allocated, demand)
-
-    # Append custom (demand-only) projects
-    if custom_projects:
-        custom_rows = _build_custom_project_rows(custom_projects, working_days)
-        output = pd.concat([output, custom_rows], ignore_index=True)
-        output = output.sort_values(["DATE", "REGION", "CCRID"]).reset_index(
-            drop=True
-        )
 
     return output
 
@@ -189,6 +193,26 @@ def _prepare_weights() -> pd.DataFrame:
     return weights[["CCRID", "REGION", "MONTH_NUMBER", "ALLOCATION"]]
 
 
+def _recalculate_weights_from_demand(
+    weights: pd.DataFrame,
+    demand: pd.DataFrame,
+) -> pd.DataFrame:
+    """Recalculate ALLOCATION as each project's share of regional demand."""
+    merged = weights[["CCRID", "REGION", "MONTH_NUMBER"]].merge(
+        demand[["CCRID", "MONTH_NUMBER", "DEMAND_HOURS"]],
+        on=["CCRID", "MONTH_NUMBER"],
+        how="left",
+    )
+    merged["DEMAND_HOURS"] = merged["DEMAND_HOURS"].fillna(0)
+
+    group_total = merged.groupby(["REGION", "MONTH_NUMBER"])[
+        "DEMAND_HOURS"
+    ].transform("sum")
+    merged["ALLOCATION"] = merged["DEMAND_HOURS"] / group_total.replace(0, 1)
+
+    return merged[["CCRID", "REGION", "MONTH_NUMBER", "ALLOCATION"]]
+
+
 def _allocate_to_projects(
     expanded: pd.DataFrame, weights: pd.DataFrame
 ) -> pd.DataFrame:
@@ -238,30 +262,49 @@ def _assemble_output(
     return df.sort_values(["DATE", "REGION", "CCRID"]).reset_index(drop=True)
 
 
-def _build_custom_project_rows(
+def _build_custom_demand_and_weights(
     custom_projects: list[dict],
     working_days: pd.DataFrame,
-) -> pd.DataFrame:
-    """Create demand-only output rows for custom/hypothetical projects."""
-    rows: list[dict] = []
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Create demand and weight entries for custom projects.
+
+    Returns a (demand, weights) tuple so custom projects participate in
+    the main allocation pipeline rather than being appended as zero-supply
+    rows.
+    """
+    demand_rows: list[dict] = []
+    weight_rows: list[dict] = []
     for proj in custom_projects:
         start = pd.to_datetime(proj.get("START_DATE"))
         eligible = working_days[working_days["MONTH_START"] >= start]
-        n_months = len(eligible)
-        monthly_demand = proj["TOTAL_HOURS"] / max(n_months, 1)
+        n_months = max(len(eligible), 1)
+        monthly_demand = proj["TOTAL_HOURS"] / n_months
         for _, wd_row in eligible.iterrows():
-            rows.append(
+            month_num = wd_row["MONTH_NUMBER"]
+            demand_rows.append(
                 {
                     "CCRID": proj["CCRID"],
                     "PROJECT_NAME": proj["PROJECT_NAME"],
-                    "REGION": proj["REGION"],
-                    "DATE": wd_row["MONTH_START"],
-                    "BASE_SUPPLY": 0.0,
-                    "SCENARIO_SUPPLY": 0.0,
-                    "SUPPLY_DELTA": 0.0,
-                    "DEMAND": round(monthly_demand, 1),
-                    "BASE_GAP": round(-monthly_demand, 1),
-                    "SCENARIO_GAP": round(-monthly_demand, 1),
+                    "MONTH_NUMBER": month_num,
+                    "DEMAND_HOURS": round(monthly_demand, 1),
                 }
             )
-    return pd.DataFrame(rows, columns=_FINAL_COLUMNS)
+            weight_rows.append(
+                {
+                    "CCRID": proj["CCRID"],
+                    "REGION": proj["REGION"],
+                    "MONTH_NUMBER": month_num,
+                    "ALLOCATION": 0.0,  # placeholder; recalculated later
+                }
+            )
+    demand_df = (
+        pd.DataFrame(demand_rows)
+        if demand_rows
+        else pd.DataFrame(columns=["CCRID", "PROJECT_NAME", "MONTH_NUMBER", "DEMAND_HOURS"])
+    )
+    weights_df = (
+        pd.DataFrame(weight_rows)
+        if weight_rows
+        else pd.DataFrame(columns=["CCRID", "REGION", "MONTH_NUMBER", "ALLOCATION"])
+    )
+    return demand_df, weights_df

@@ -164,15 +164,15 @@ def get_backlog(pm_hours: int, cm_hours: int) -> pd.DataFrame:
     """Combined PM + CM backlog by region and project, converted to hours."""
     return _fetch_df(
         """
-        SELECT  REGION, PROJECT_NAME, SUM(COUNT) AS COUNT, SUM(HOURS) AS HOURS
+        SELECT  REGION, PROJECT_NAME, CCRID, SUM(COUNT) AS COUNT, SUM(HOURS) AS HOURS
         FROM (
-            SELECT NAME AS  REGION, PROJECT_NAME, COUNT, COUNT * %s AS HOURS
+            SELECT NAME AS  REGION, PROJECT_NAME, CCRID, COUNT, COUNT * %s AS HOURS
             FROM SA.SUPPLY_DEMAND.PREVENTIVE_BACKLOG
             UNION ALL
-            SELECT NAME AS REGION,  PROJECT_NAME, COUNT, COUNT * %s AS HOURS
+            SELECT NAME AS REGION,  PROJECT_NAME, CCRID, COUNT, COUNT * %s AS HOURS
             FROM SA.SUPPLY_DEMAND.CORRECTIVE_BACKLOG
         )
-        GROUP BY 1, 2
+        GROUP BY 1, 2, 3
         """,
         (pm_hours, cm_hours),
     )
