@@ -69,7 +69,7 @@ def build_demo_preset() -> dict:
         "selected_regions": list(DEMO_REGIONS),
         "adjustments": adjustments,
         "adjustment_start_date": adj_start,
-        "excluded_ccrids": [],
+        "excluded_projects": [],
         "custom_projects": [],
     }
 

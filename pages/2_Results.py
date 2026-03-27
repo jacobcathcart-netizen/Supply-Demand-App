@@ -38,7 +38,7 @@ scenario_inputs = st.session_state.get("scenario")
 regions: list[str] = st.session_state.get("selected_regions", [])
 adjustments: dict[str, int] = st.session_state.get("adjustments", {})
 adjustment_start_date = st.session_state.get("adjustment_start_date")
-excluded_ccrids: list[str] = st.session_state.get("excluded_ccrids", [])
+excluded_projects: list[dict] = st.session_state.get("excluded_projects", [])
 custom_projects: list[dict] = st.session_state.get("custom_projects", [])
 
 if not scenario_inputs or not regions or adjustment_start_date is None:
@@ -59,9 +59,13 @@ def _run(
     pct_decrease: float,
     vac_days_per_month: float,
     sick_days_per_month: float,
-    excluded_ccrids: tuple[str, ...] = (),
+    excluded_projects: tuple[tuple, ...] = (),
     custom_projects: tuple[tuple, ...] = (),
 ) -> pd.DataFrame:
+    excl_list = [
+        {"CCRID": e[0], "EXCLUDE_FROM": e[1]}
+        for e in excluded_projects
+    ]
     custom_proj_list = [
         {
             "CCRID": c[0],
@@ -81,7 +85,7 @@ def _run(
         pct_decrease=pct_decrease,
         vac_days_per_month=vac_days_per_month,
         sick_days_per_month=sick_days_per_month,
-        excluded_ccrids=list(excluded_ccrids),
+        excluded_projects=excl_list if excl_list else None,
         custom_projects=custom_proj_list if custom_proj_list else None,
     )
 
@@ -107,7 +111,9 @@ with st.spinner("Running scenario..."):
         scenario_inputs["pct_decrease"],
         scenario_inputs["vac_days_per_month"],
         scenario_inputs["sick_days_per_month"],
-        excluded_ccrids=tuple(excluded_ccrids),
+        excluded_projects=tuple(
+            (p["CCRID"], p["EXCLUDE_FROM"]) for p in excluded_projects
+        ),
         custom_projects=tuple(
             (p["CCRID"], p["PROJECT_NAME"], p["REGION"], p["TOTAL_HOURS"], p["START_DATE"])
             for p in custom_projects
@@ -161,9 +167,10 @@ backlog_df = _load_backlog(scenario_inputs["pm_assumption"], scenario_inputs["cm
 filtered_backlog = backlog_df if not backlog_df.empty else pd.DataFrame()
 if not filtered_backlog.empty:
     filtered_backlog = filtered_backlog[filtered_backlog["REGION"].isin(regions)]
-    if excluded_ccrids:
+    if excluded_projects:
+        excl_ccrids = {p["CCRID"] for p in excluded_projects}
         filtered_backlog = filtered_backlog[
-            ~filtered_backlog["CCRID"].isin(excluded_ccrids)
+            ~filtered_backlog["CCRID"].isin(excl_ccrids)
         ]
     if region_filter != "All":
         filtered_backlog = filtered_backlog[filtered_backlog["REGION"] == region_filter]
@@ -346,7 +353,9 @@ with tab_sensitivity:
                 "pct_decrease": scenario_inputs["pct_decrease"],
                 "vac_days_per_month": scenario_inputs["vac_days_per_month"],
                 "sick_days_per_month": scenario_inputs["sick_days_per_month"],
-                "excluded_ccrids": tuple(excluded_ccrids),
+                "excluded_projects": tuple(
+                    (p["CCRID"], p["EXCLUDE_FROM"]) for p in excluded_projects
+                ),
                 "custom_projects": tuple(
                     (p["CCRID"], p["PROJECT_NAME"], p["REGION"], p["TOTAL_HOURS"], p["START_DATE"])
                     for p in custom_projects
@@ -366,8 +375,9 @@ with tab_sensitivity:
                 if bl.empty:
                     return 0.0
                 fb = bl[bl["REGION"].isin(regions)]
-                if excluded_ccrids:
-                    fb = fb[~fb["CCRID"].isin(excluded_ccrids)]
+                if excluded_projects:
+                    excl_ccrids = {p["CCRID"] for p in excluded_projects}
+                    fb = fb[~fb["CCRID"].isin(excl_ccrids)]
                 if region_filter != "All":
                     fb = fb[fb["REGION"] == region_filter]
                 if selected_projects:
