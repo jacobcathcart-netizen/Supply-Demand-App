@@ -537,6 +537,27 @@ def sensitivity_fan_chart(
             zorder=2,
         )
 
+    # Data labels on final points of high/low lines
+    for i, pr in enumerate(param_results):
+        color = colors[i % len(colors)]
+        for series in (pr.low_monthly, pr.high_monthly):
+            if not series.empty:
+                last_x = series["DATE"].iloc[-1]
+                last_y = series["SCENARIO_GAP_CUMSUM"].iloc[-1]
+                ax.annotate(
+                    f"{last_y:,.0f}",
+                    xy=(last_x, last_y),
+                    xytext=(6, 0),
+                    textcoords="offset points",
+                    ha="left",
+                    va="center",
+                    fontsize=6.5,
+                    fontweight="bold",
+                    color=color,
+                    alpha=0.8,
+                    zorder=5,
+                )
+
     # Base case line (on top)
     ax.plot(
         dates,

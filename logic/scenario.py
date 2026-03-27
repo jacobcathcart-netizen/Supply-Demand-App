@@ -51,7 +51,7 @@ def run_scenario(
     pct_decrease: float,
     vac_days_per_month: float,
     sick_days_per_month: float,
-    excluded_ccrids: list[str] | None = None,
+    excluded_projects: list[dict] | None = None,
     custom_projects: list[dict] | None = None,
 ) -> pd.DataFrame:
     """Run a full scenario and return the result DataFrame.
@@ -70,8 +70,10 @@ def run_scenario(
         Fraction of time lost to non-project work (0-1).
     vac_days_per_month / sick_days_per_month:
         Average absence days per FTE per month.
-    excluded_ccrids:
-        CCRIDs to exclude from demand and supply allocation.
+    excluded_projects:
+        List of dicts with keys CCRID and EXCLUDE_FROM (YYYY-MM-DD).
+        Projects are excluded from demand and supply allocation starting
+        from the specified month.
     custom_projects:
         List of dicts with keys CCRID, PROJECT_NAME, REGION, TOTAL_HOURS.
         These are demand-only projects (supply = 0).
@@ -98,10 +100,30 @@ def run_scenario(
     weights = _prepare_weights()
     demand = _prepare_demand()
 
-    # Filter out excluded projects
-    if excluded_ccrids:
-        weights = weights[~weights["CCRID"].isin(excluded_ccrids)]
-        demand = demand[~demand["CCRID"].isin(excluded_ccrids)]
+    # Filter out excluded projects (date-aware: per-month exclusion)
+    if excluded_projects:
+        excl_df = pd.DataFrame(excluded_projects)[["CCRID", "EXCLUDE_FROM"]]
+        excl_df["EXCLUDE_FROM"] = pd.to_datetime(excl_df["EXCLUDE_FROM"])
+
+        # Cross-join with working_days to find which (CCRID, MONTH_NUMBER)
+        # pairs fall on or after the exclusion date
+        excl_months = excl_df.merge(
+            working_days[["MONTH_START", "MONTH_NUMBER"]], how="cross"
+        )
+        excl_active = excl_months[
+            excl_months["MONTH_START"] >= excl_months["EXCLUDE_FROM"]
+        ][["CCRID", "MONTH_NUMBER"]].drop_duplicates()
+
+        # Anti-join: remove excluded (CCRID, MONTH_NUMBER) pairs
+        weights = weights.merge(
+            excl_active, on=["CCRID", "MONTH_NUMBER"], how="left", indicator=True
+        )
+        weights = weights[weights["_merge"] == "left_only"].drop(columns="_merge")
+
+        demand = demand.merge(
+            excl_active, on=["CCRID", "MONTH_NUMBER"], how="left", indicator=True
+        )
+        demand = demand[demand["_merge"] == "left_only"].drop(columns="_merge")
 
     # Add custom projects to demand and weights
     if custom_projects:
@@ -112,7 +134,7 @@ def run_scenario(
         weights = pd.concat([weights, custom_weights], ignore_index=True)
 
     # Recalculate allocation weights from demand proportions
-    if excluded_ccrids or custom_projects:
+    if excluded_projects or custom_projects:
         weights = _recalculate_weights_from_demand(weights, demand)
 
     allocated = _allocate_to_projects(expanded, weights)

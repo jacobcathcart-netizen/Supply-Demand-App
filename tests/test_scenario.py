@@ -326,12 +326,78 @@ class TestExclusionPreservesTotalSupply:
             patch("logic.scenario.get_demand", return_value=demand_df),
         ):
             result_all = run_scenario(**common_kwargs)
-            result_excluded = run_scenario(**common_kwargs, excluded_ccrids=["P002"])
+            result_excluded = run_scenario(
+                **common_kwargs,
+                excluded_projects=[{"CCRID": "P002", "EXCLUDE_FROM": "2025-01-01"}],
+            )
 
         # Total supply across all projects should be the same
         assert result_all["SCENARIO_SUPPLY"].sum() == pytest.approx(
             result_excluded["SCENARIO_SUPPLY"].sum(), abs=0.2
         )
+
+    def test_partial_date_exclusion(self):
+        """Excluding a project from month 2 should keep it in month 1."""
+        supply_df = pd.DataFrame(
+            {
+                "REGION": ["East", "East"],
+                "MONTH_NUMBER": [1, 2],
+                "COUNT": [10, 10],
+            }
+        )
+        working_days_df = pd.DataFrame(
+            {
+                "MONTH_START": pd.to_datetime(["2025-01-01", "2025-02-01"]),
+                "BUSINESS_DAYS": [22, 20],
+            }
+        )
+        weights_df = pd.DataFrame(
+            {
+                "SERVICE_REGION_ST": ["East", "East", "East", "East"],
+                "CCRID": ["P001", "P002", "P001", "P002"],
+                "MONTH_NUMBER": [1, 1, 2, 2],
+                "ALLOCATION": [0.6, 0.4, 0.6, 0.4],
+            }
+        )
+        demand_df = pd.DataFrame(
+            {
+                "CCRID": ["P001", "P001", "P002", "P002"],
+                "PROJECT_NAME": ["Alpha", "Alpha", "Beta", "Beta"],
+                "MONTH_NUMBER": [1, 2, 1, 2],
+                "HOURS": [600, 600, 400, 400],
+            }
+        )
+
+        common_kwargs = dict(
+            regions=["East"],
+            adjustments={"East": 0},
+            start_date=date(2025, 1, 1),
+            end_date=date(2025, 2, 28),
+            adjustment_start_date=date(2025, 1, 1),
+            pct_decrease=0.15,
+            vac_days_per_month=20 / 12,
+            sick_days_per_month=8 / 12,
+        )
+
+        with (
+            patch("logic.scenario.get_supply", return_value=supply_df),
+            patch("logic.scenario.get_working_days", return_value=working_days_df),
+            patch("logic.scenario.get_demand_weight", return_value=weights_df),
+            patch("logic.scenario.get_demand", return_value=demand_df),
+        ):
+            result = run_scenario(
+                **common_kwargs,
+                excluded_projects=[{"CCRID": "P002", "EXCLUDE_FROM": "2025-02-01"}],
+            )
+
+        # P002 should appear in month 1 but not in month 2
+        p002_rows = result[result["CCRID"] == "P002"]
+        assert len(p002_rows) == 1
+        assert p002_rows.iloc[0]["DATE"].month == 1
+
+        # P001 should appear in both months
+        p001_rows = result[result["CCRID"] == "P001"]
+        assert len(p001_rows) == 2
 
 
 class TestCustomProjectReceivesSupply:
