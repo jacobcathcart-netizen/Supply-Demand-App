@@ -247,9 +247,10 @@ with tab_baseline:
 with tab_scenario:
     fig2 = scenario_supply_demand_with_gap(filtered, region_label=region_label, monthly=base_monthly_no_backlog, adjustment_start_date=adjustment_start_date)
     if fig2:
+        scen_demand_col = "SCENARIO_DEMAND" if "SCENARIO_DEMAND" in filtered.columns else "DEMAND"
         st.caption(
             f"Line chart: scenario supply ({filtered['SCENARIO_SUPPLY'].sum():,.0f} hrs) "
-            f"vs demand ({filtered['DEMAND'].sum():,.0f} hrs) over time for {region_label}."
+            f"vs demand ({filtered[scen_demand_col].sum():,.0f} hrs) over time for {region_label}."
         )
         st.pyplot(fig2, clear_figure=True)
     else:

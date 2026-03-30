@@ -10,6 +10,11 @@ import matplotlib.ticker as mticker
 import pandas as pd
 import streamlit as st
 from matplotlib.figure import Figure
+from PIL import Image
+
+# Charts are locally generated — raise PIL's pixel limit so Streamlit
+# doesn't reject large sensitivity figures as decompression bombs.
+Image.MAX_IMAGE_PIXELS = None
 
 from components.branding import (
     CHART_COLORS,
@@ -76,17 +81,19 @@ def _monthly_totals(df: pd.DataFrame, backlog: float = 0) -> pd.DataFrame:
 
     backlog = float(backlog)
 
+    agg_cols = [
+        "BASE_SUPPLY",
+        "SCENARIO_SUPPLY",
+        "DEMAND",
+        "BASE_GAP",
+        "SCENARIO_GAP",
+        "SUPPLY_DELTA",
+    ]
+    if "SCENARIO_DEMAND" in df.columns:
+        agg_cols.insert(3, "SCENARIO_DEMAND")
+
     monthly = (
-        df.groupby("DATE", as_index=False)[
-            [
-                "BASE_SUPPLY",
-                "SCENARIO_SUPPLY",
-                "DEMAND",
-                "BASE_GAP",
-                "SCENARIO_GAP",
-                "SUPPLY_DELTA",
-            ]
-        ]
+        df.groupby("DATE", as_index=False)[agg_cols]
         .sum()
         .sort_values("DATE")
     )
@@ -182,12 +189,17 @@ def _line_chart(
     region_label: str,
     monthly: pd.DataFrame | None = None,
     adjustment_start_date=None,
+    demand_col: str = "DEMAND",
 ) -> Figure | None:
     """Shared implementation for baseline / scenario supply-vs-demand charts."""
     if monthly is None:
         monthly = _monthly_totals(df)
     if monthly.empty:
         return None
+
+    # Fall back to DEMAND if the requested column is absent
+    if demand_col not in monthly.columns:
+        demand_col = "DEMAND"
 
     fig, ax = plt.subplots(figsize=CHART_FIGSIZE_WIDE)
 
@@ -208,7 +220,7 @@ def _line_chart(
     # Demand line
     ax.plot(
         monthly["DATE"],
-        monthly["DEMAND"],
+        monthly[demand_col],
         marker="D",
         markersize=6,
         markerfacecolor=WARM_WHITE,
@@ -240,7 +252,7 @@ def _line_chart(
     ax.fill_between(
         monthly["DATE"],
         monthly[supply_col],
-        monthly["DEMAND"],
+        monthly[demand_col],
         alpha=0.08,
         color=LIGHT_BLUE,
     )
@@ -273,7 +285,11 @@ def scenario_supply_demand_with_gap(
     monthly: pd.DataFrame | None = None,
     adjustment_start_date=None,
 ) -> Figure | None:
-    return _line_chart(df, "SCENARIO_SUPPLY", "SCENARIO_GAP", "Scenario", region_label, monthly=monthly, adjustment_start_date=adjustment_start_date)
+    return _line_chart(
+        df, "SCENARIO_SUPPLY", "SCENARIO_GAP", "Scenario", region_label,
+        monthly=monthly, adjustment_start_date=adjustment_start_date,
+        demand_col="SCENARIO_DEMAND",
+    )
 
 
 # ── Gap bar chart ────────────────────────────────────────────────────
@@ -624,7 +640,8 @@ def sensitivity_tornado_chart(
     lows = [p.low_ending_backlog for p in sorted_params]
     highs = [p.high_ending_backlog for p in sorted_params]
 
-    fig, ax = plt.subplots(figsize=(CHART_FIGSIZE_WIDE[0], max(3, len(names) * 0.8)))
+    chart_height = min(max(3, len(names) * 0.8), 10)
+    fig, ax = plt.subplots(figsize=(CHART_FIGSIZE_WIDE[0], chart_height))
 
     y_pos = range(len(names))
 
