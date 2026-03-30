@@ -76,20 +76,24 @@ def _monthly_totals(df: pd.DataFrame, backlog: float = 0) -> pd.DataFrame:
 
     backlog = float(backlog)
 
+    agg_cols = [
+        "BASE_SUPPLY",
+        "SCENARIO_SUPPLY",
+        "DEMAND",
+        "SCENARIO_DEMAND",
+        "BASE_GAP",
+        "SCENARIO_GAP",
+        "SUPPLY_DELTA",
+    ]
+    # Gracefully handle DataFrames that lack SCENARIO_DEMAND (e.g. tests)
+    present = [c for c in agg_cols if c in df.columns]
     monthly = (
-        df.groupby("DATE", as_index=False)[
-            [
-                "BASE_SUPPLY",
-                "SCENARIO_SUPPLY",
-                "DEMAND",
-                "BASE_GAP",
-                "SCENARIO_GAP",
-                "SUPPLY_DELTA",
-            ]
-        ]
+        df.groupby("DATE", as_index=False)[present]
         .sum()
         .sort_values("DATE")
     )
+    if "SCENARIO_DEMAND" not in monthly.columns:
+        monthly["SCENARIO_DEMAND"] = monthly["DEMAND"]
     monthly["DATE"] = pd.to_datetime(monthly["DATE"])
 
     # Walk month-by-month so backlog floors at 0 each step rather than
@@ -182,6 +186,7 @@ def _line_chart(
     region_label: str,
     monthly: pd.DataFrame | None = None,
     adjustment_start_date=None,
+    demand_col: str = "DEMAND",
 ) -> Figure | None:
     """Shared implementation for baseline / scenario supply-vs-demand charts."""
     if monthly is None:
@@ -208,7 +213,7 @@ def _line_chart(
     # Demand line
     ax.plot(
         monthly["DATE"],
-        monthly["DEMAND"],
+        monthly[demand_col],
         marker="D",
         markersize=6,
         markerfacecolor=WARM_WHITE,
@@ -240,7 +245,7 @@ def _line_chart(
     ax.fill_between(
         monthly["DATE"],
         monthly[supply_col],
-        monthly["DEMAND"],
+        monthly[demand_col],
         alpha=0.08,
         color=LIGHT_BLUE,
     )
@@ -273,7 +278,7 @@ def scenario_supply_demand_with_gap(
     monthly: pd.DataFrame | None = None,
     adjustment_start_date=None,
 ) -> Figure | None:
-    return _line_chart(df, "SCENARIO_SUPPLY", "SCENARIO_GAP", "Scenario", region_label, monthly=monthly, adjustment_start_date=adjustment_start_date)
+    return _line_chart(df, "SCENARIO_SUPPLY", "SCENARIO_GAP", "Scenario", region_label, monthly=monthly, adjustment_start_date=adjustment_start_date, demand_col="SCENARIO_DEMAND")
 
 
 # ── Gap bar chart ────────────────────────────────────────────────────

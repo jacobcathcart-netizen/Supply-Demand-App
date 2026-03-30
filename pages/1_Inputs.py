@@ -458,9 +458,6 @@ with tab_projects:
                 )
             )
 
-            st.caption(f"{len(project_options)} project(s) shown after filters")
-
-            # Exclude a project via form (mirrors the Add Projects pattern)
             already_excluded = {
                 p["CCRID"] for p in st.session_state["excluded_projects"]
             }
@@ -468,14 +465,43 @@ with tab_projects:
                 c for c in project_options["CCRID"] if c not in already_excluded
             ]
 
+            st.caption(f"{len(available_ccrids)} of {len(project_options)} project(s) available after filters")
+
+            # ── Exclude All Filtered ──────────────────────────────────────
+            if available_ccrids:
+                ea1, ea2 = st.columns([1, 3])
+                with ea1:
+                    exclude_all_date = st.date_input(
+                        "Exclude all from",
+                        value=_saved("start_date", DEFAULT_START_DATE),
+                        format="MM/DD/YYYY",
+                        key="exclude_all_date",
+                    )
+                with ea2:
+                    st.markdown("")
+                    st.markdown("")
+                    if st.button("Exclude All Filtered", type="secondary"):
+                        for ccrid in available_ccrids:
+                            st.session_state["excluded_projects"].append(
+                                {
+                                    "CCRID": ccrid,
+                                    "PROJECT_NAME": ccrid_to_label.get(ccrid, ccrid),
+                                    "EXCLUDE_FROM": str(exclude_all_date),
+                                }
+                            )
+                        st.toast(f"Excluded {len(available_ccrids)} project(s)", icon="🚫")
+                        st.rerun()
+
+            # ── Select individual projects ────────────────────────────────
             if available_ccrids:
                 with st.form("exclude_project_form", clear_on_submit=True):
                     e1, e2 = st.columns([3, 1])
                     with e1:
-                        excl_ccrid = st.selectbox(
-                            "Project",
+                        excl_ccrids = st.multiselect(
+                            "Projects",
                             options=available_ccrids,
                             format_func=lambda c: ccrid_to_label.get(c, c),
+                            placeholder="Select projects to exclude",
                         )
                     with e2:
                         excl_date = st.date_input(
@@ -484,19 +510,20 @@ with tab_projects:
                             format="MM/DD/YYYY",
                         )
                     excl_submitted = st.form_submit_button(
-                        "Add Exclusion", type="primary"
+                        "Add Exclusion(s)", type="primary"
                     )
 
-                if excl_submitted and excl_ccrid:
-                    st.session_state["excluded_projects"].append(
-                        {
-                            "CCRID": excl_ccrid,
-                            "PROJECT_NAME": ccrid_to_label.get(excl_ccrid, excl_ccrid),
-                            "EXCLUDE_FROM": str(excl_date),
-                        }
-                    )
+                if excl_submitted and excl_ccrids:
+                    for ccrid in excl_ccrids:
+                        st.session_state["excluded_projects"].append(
+                            {
+                                "CCRID": ccrid,
+                                "PROJECT_NAME": ccrid_to_label.get(ccrid, ccrid),
+                                "EXCLUDE_FROM": str(excl_date),
+                            }
+                        )
                     st.toast(
-                        f"Excluding: {ccrid_to_label.get(excl_ccrid, excl_ccrid)}",
+                        f"Excluded {len(excl_ccrids)} project(s)",
                         icon="🚫",
                     )
                     st.rerun()
@@ -510,11 +537,16 @@ with tab_projects:
                     "Excluded Projects",
                     f"{len(st.session_state['excluded_projects'])} project(s) excluded",
                 )
-                st.dataframe(
-                    pd.DataFrame(st.session_state["excluded_projects"]),
-                    hide_index=True,
-                    use_container_width=True,
-                )
+                for idx, excl in enumerate(st.session_state["excluded_projects"]):
+                    c1, c2, c3 = st.columns([4, 2, 0.5])
+                    with c1:
+                        st.text(excl["PROJECT_NAME"])
+                    with c2:
+                        st.text(excl["EXCLUDE_FROM"])
+                    with c3:
+                        if st.button("✕", key=f"del_excl_{idx}"):
+                            st.session_state["excluded_projects"].pop(idx)
+                            st.rerun()
                 if st.button("Clear All Exclusions"):
                     st.session_state["excluded_projects"] = []
                     st.rerun()
