@@ -411,15 +411,22 @@ with tab_projects:
 
         in_dataset = projects_df[projects_df["CCRID"].isin(dataset_ccrids)].copy()
 
+        # Auto-filter to selected regions from the Scenario Parameters tab
+        if selected_regions:
+            in_dataset = in_dataset[in_dataset["REGION"].isin(selected_regions)]
+
         if in_dataset.empty:
-            st.info("No projects found in the current dataset.")
+            if selected_regions:
+                st.info("No projects found for the selected regions. Adjust regions on the Scenario Parameters tab.")
+            else:
+                st.info("No projects found in the current dataset. Select regions on the Scenario Parameters tab.")
         else:
-            # Dimension filters to narrow the list
+            # Additional filters to narrow the list further
             filter_cols = st.columns(3)
             with filter_cols[0]:
                 region_opts = sorted(in_dataset["REGION"].dropna().unique().tolist())
                 filter_region = st.multiselect(
-                    "Filter by Region", options=region_opts, placeholder="All regions"
+                    "Filter by Region", options=region_opts, placeholder="All selected regions"
                 )
             with filter_cols[1]:
                 customer_opts = sorted(in_dataset["CUSTOMER"].dropna().unique().tolist())
@@ -458,9 +465,6 @@ with tab_projects:
                 )
             )
 
-            st.caption(f"{len(project_options)} project(s) shown after filters")
-
-            # Exclude a project via form (mirrors the Add Projects pattern)
             already_excluded = {
                 p["CCRID"] for p in st.session_state["excluded_projects"]
             }
@@ -468,14 +472,19 @@ with tab_projects:
                 c for c in project_options["CCRID"] if c not in already_excluded
             ]
 
+            st.caption(
+                f"{len(available_ccrids)} of {len(project_options)} project(s) available after filters"
+            )
+
             if available_ccrids:
                 with st.form("exclude_project_form", clear_on_submit=True):
                     e1, e2 = st.columns([3, 1])
                     with e1:
-                        excl_ccrid = st.selectbox(
-                            "Project",
+                        excl_ccrids = st.multiselect(
+                            "Projects",
                             options=available_ccrids,
                             format_func=lambda c: ccrid_to_label.get(c, c),
+                            placeholder="Select one or more projects",
                         )
                     with e2:
                         excl_date = st.date_input(
@@ -483,20 +492,42 @@ with tab_projects:
                             value=_saved("start_date", DEFAULT_START_DATE),
                             format="MM/DD/YYYY",
                         )
-                    excl_submitted = st.form_submit_button(
-                        "Add Exclusion", type="primary"
-                    )
+                    ef1, ef2 = st.columns(2)
+                    with ef1:
+                        excl_submitted = st.form_submit_button(
+                            "Add Exclusion(s)", type="primary"
+                        )
+                    with ef2:
+                        excl_all_submitted = st.form_submit_button(
+                            "Exclude All Filtered",
+                        )
 
-                if excl_submitted and excl_ccrid:
-                    st.session_state["excluded_projects"].append(
-                        {
-                            "CCRID": excl_ccrid,
-                            "PROJECT_NAME": ccrid_to_label.get(excl_ccrid, excl_ccrid),
-                            "EXCLUDE_FROM": str(excl_date),
-                        }
-                    )
+                if excl_submitted and excl_ccrids:
+                    for ccrid in excl_ccrids:
+                        st.session_state["excluded_projects"].append(
+                            {
+                                "CCRID": ccrid,
+                                "PROJECT_NAME": ccrid_to_label.get(ccrid, ccrid),
+                                "EXCLUDE_FROM": str(excl_date),
+                            }
+                        )
                     st.toast(
-                        f"Excluding: {ccrid_to_label.get(excl_ccrid, excl_ccrid)}",
+                        f"Excluded {len(excl_ccrids)} project(s)",
+                        icon="🚫",
+                    )
+                    st.rerun()
+
+                if excl_all_submitted:
+                    for ccrid in available_ccrids:
+                        st.session_state["excluded_projects"].append(
+                            {
+                                "CCRID": ccrid,
+                                "PROJECT_NAME": ccrid_to_label.get(ccrid, ccrid),
+                                "EXCLUDE_FROM": str(excl_date),
+                            }
+                        )
+                    st.toast(
+                        f"Excluded {len(available_ccrids)} project(s)",
                         icon="🚫",
                     )
                     st.rerun()

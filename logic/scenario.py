@@ -25,6 +25,7 @@ _FINAL_COLUMNS: list[str] = [
     "SCENARIO_SUPPLY",
     "SUPPLY_DELTA",
     "DEMAND",
+    "SCENARIO_DEMAND",
     "BASE_GAP",
     "SCENARIO_GAP",
 ]
@@ -34,6 +35,7 @@ _NUMERIC_COLUMNS: list[str] = [
     "SCENARIO_SUPPLY",
     "SUPPLY_DELTA",
     "DEMAND",
+    "SCENARIO_DEMAND",
     "BASE_GAP",
     "SCENARIO_GAP",
 ]
@@ -97,48 +99,74 @@ def run_scenario(
         absence_days=float(vac_days_per_month) + float(sick_days_per_month),
     )
 
-    weights = _prepare_weights()
-    demand = _prepare_demand()
+    base_weights = _prepare_weights()
+    base_demand = _prepare_demand()
+    scenario_weights = base_weights.copy()
+    scenario_demand = base_demand.copy()
+    has_modifications = bool(excluded_projects) or bool(custom_projects)
 
-    # Filter out excluded projects (date-aware: per-month exclusion)
+    # When exclusions/additions exist, expand scenario data to per-date
+    # rows (MONTH_START) so that date-aware filtering is correct even
+    # when the scenario spans multiple calendar years.
+    if has_modifications:
+        month_map = working_days[["MONTH_START", "MONTH_NUMBER"]]
+        scenario_weights = scenario_weights.merge(
+            month_map, on="MONTH_NUMBER", how="inner"
+        )
+        scenario_demand = scenario_demand.merge(
+            month_map, on="MONTH_NUMBER", how="inner"
+        )
+
     if excluded_projects:
         excl_df = pd.DataFrame(excluded_projects)[["CCRID", "EXCLUDE_FROM"]]
-        excl_df["EXCLUDE_FROM"] = pd.to_datetime(excl_df["EXCLUDE_FROM"])
+        excl_df["EXCLUDE_FROM"] = (
+            pd.to_datetime(excl_df["EXCLUDE_FROM"])
+            .dt.to_period("M")
+            .dt.to_timestamp()
+        )
 
-        # Cross-join with working_days to find which (CCRID, MONTH_NUMBER)
-        # pairs fall on or after the exclusion date
         excl_months = excl_df.merge(
             working_days[["MONTH_START", "MONTH_NUMBER"]], how="cross"
         )
         excl_active = excl_months[
             excl_months["MONTH_START"] >= excl_months["EXCLUDE_FROM"]
-        ][["CCRID", "MONTH_NUMBER"]].drop_duplicates()
+        ][["CCRID", "MONTH_START"]].drop_duplicates()
 
-        # Anti-join: remove excluded (CCRID, MONTH_NUMBER) pairs
-        weights = weights.merge(
-            excl_active, on=["CCRID", "MONTH_NUMBER"], how="left", indicator=True
+        # Anti-join on actual date: remove from scenario only
+        scenario_weights = scenario_weights.merge(
+            excl_active, on=["CCRID", "MONTH_START"], how="left", indicator=True
         )
-        weights = weights[weights["_merge"] == "left_only"].drop(columns="_merge")
+        scenario_weights = scenario_weights[
+            scenario_weights["_merge"] == "left_only"
+        ].drop(columns="_merge")
 
-        demand = demand.merge(
-            excl_active, on=["CCRID", "MONTH_NUMBER"], how="left", indicator=True
+        scenario_demand = scenario_demand.merge(
+            excl_active, on=["CCRID", "MONTH_START"], how="left", indicator=True
         )
-        demand = demand[demand["_merge"] == "left_only"].drop(columns="_merge")
+        scenario_demand = scenario_demand[
+            scenario_demand["_merge"] == "left_only"
+        ].drop(columns="_merge")
 
-    # Add custom projects to demand and weights
+    # Additions: only modify scenario path
     if custom_projects:
         custom_demand, custom_weights = _build_custom_demand_and_weights(
             custom_projects, working_days
         )
-        demand = pd.concat([demand, custom_demand], ignore_index=True)
-        weights = pd.concat([weights, custom_weights], ignore_index=True)
+        scenario_demand = pd.concat(
+            [scenario_demand, custom_demand], ignore_index=True
+        )
+        scenario_weights = pd.concat(
+            [scenario_weights, custom_weights], ignore_index=True
+        )
 
-    # Recalculate allocation weights from demand proportions
-    if excluded_projects or custom_projects:
-        weights = _recalculate_weights_from_demand(weights, demand)
+    # Recalculate scenario weights only
+    if has_modifications:
+        scenario_weights = _recalculate_weights_from_demand(
+            scenario_weights, scenario_demand
+        )
 
-    allocated = _allocate_to_projects(expanded, weights)
-    output = _assemble_output(allocated, demand)
+    allocated = _allocate_to_projects(expanded, base_weights, scenario_weights)
+    output = _assemble_output(allocated, base_demand, scenario_demand)
 
     return output
 
@@ -219,33 +247,76 @@ def _recalculate_weights_from_demand(
     weights: pd.DataFrame,
     demand: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Recalculate ALLOCATION as each project's share of regional demand."""
-    merged = weights[["CCRID", "REGION", "MONTH_NUMBER"]].merge(
-        demand[["CCRID", "MONTH_NUMBER", "DEMAND_HOURS"]],
-        on=["CCRID", "MONTH_NUMBER"],
+    """Recalculate ALLOCATION as each project's share of regional demand.
+
+    Uses MONTH_START as the time key when present (multi-year scenarios),
+    otherwise falls back to MONTH_NUMBER.
+    """
+    has_dates = "MONTH_START" in weights.columns
+    month_col = "MONTH_START" if has_dates else "MONTH_NUMBER"
+
+    merged = weights.drop(columns="ALLOCATION").merge(
+        demand[["CCRID", month_col, "DEMAND_HOURS"]],
+        on=["CCRID", month_col],
         how="left",
     )
     merged["DEMAND_HOURS"] = merged["DEMAND_HOURS"].fillna(0)
 
-    group_total = merged.groupby(["REGION", "MONTH_NUMBER"])[
+    group_total = merged.groupby(["REGION", month_col])[
         "DEMAND_HOURS"
     ].transform("sum")
     merged["ALLOCATION"] = merged["DEMAND_HOURS"] / group_total.replace(0, 1)
 
-    return merged[["CCRID", "REGION", "MONTH_NUMBER", "ALLOCATION"]]
+    return merged.drop(columns="DEMAND_HOURS")
 
 
 def _allocate_to_projects(
-    expanded: pd.DataFrame, weights: pd.DataFrame
+    expanded: pd.DataFrame,
+    base_weights: pd.DataFrame,
+    scenario_weights: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Distribute regional supply hours across projects using weights."""
-    merged = expanded.merge(weights, on=["MONTH_NUMBER", "REGION"], how="inner")
-    merged["BASE_PROJECT_SUPPLY_HOURS"] = (
-        merged["BASE_NET_SUPPLY_HOURS"] * merged["ALLOCATION"]
+    """Distribute regional supply hours across projects using weights.
+
+    Baseline and scenario use separate weight sets so that exclusions
+    and additions only affect the scenario allocation.  When scenario
+    weights carry MONTH_START the join is date-precise (required for
+    multi-year scenarios where MONTH_NUMBER alone is ambiguous).
+    """
+    base_join = ["MONTH_NUMBER", "REGION"]
+    scen_join = (
+        ["MONTH_START", "REGION"]
+        if "MONTH_START" in scenario_weights.columns
+        else ["MONTH_NUMBER", "REGION"]
     )
-    merged["SCENARIO_PROJECT_SUPPLY_HOURS"] = (
-        merged["SCENARIO_NET_SUPPLY_HOURS"] * merged["ALLOCATION"]
+    keep_cols = ["CCRID", "MONTH_NUMBER", "REGION", "MONTH_START"]
+
+    # Baseline allocation
+    base = expanded.merge(base_weights, on=base_join, how="inner")
+    base["BASE_PROJECT_SUPPLY_HOURS"] = (
+        base["BASE_NET_SUPPLY_HOURS"] * base["ALLOCATION"]
     )
+    base = base[keep_cols + ["BASE_PROJECT_SUPPLY_HOURS"]]
+
+    # Scenario allocation — drop redundant MONTH_NUMBER from weights when
+    # joining on MONTH_START to avoid suffix conflicts with expanded.
+    scen_weights = scenario_weights
+    if "MONTH_START" in scenario_weights.columns and "MONTH_NUMBER" in scenario_weights.columns:
+        scen_weights = scenario_weights.drop(columns="MONTH_NUMBER")
+    scen = expanded.merge(scen_weights, on=scen_join, how="inner")
+    scen["SCENARIO_PROJECT_SUPPLY_HOURS"] = (
+        scen["SCENARIO_NET_SUPPLY_HOURS"] * scen["ALLOCATION"]
+    )
+    scen = scen[keep_cols + ["SCENARIO_PROJECT_SUPPLY_HOURS"]]
+
+    # Outer merge: excluded projects keep base supply (scenario = 0),
+    # custom projects keep scenario supply (base = 0)
+    merged = base.merge(scen, on=keep_cols, how="outer")
+    merged["BASE_PROJECT_SUPPLY_HOURS"] = merged[
+        "BASE_PROJECT_SUPPLY_HOURS"
+    ].fillna(0)
+    merged["SCENARIO_PROJECT_SUPPLY_HOURS"] = merged[
+        "SCENARIO_PROJECT_SUPPLY_HOURS"
+    ].fillna(0)
     return merged
 
 def _prepare_demand() -> pd.DataFrame:
@@ -254,15 +325,34 @@ def _prepare_demand() -> pd.DataFrame:
 
 
 def _assemble_output(
-    allocated: pd.DataFrame, demand: pd.DataFrame
+    allocated: pd.DataFrame,
+    base_demand: pd.DataFrame,
+    scenario_demand: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Join allocated supply with demand and compute gaps."""
-    df = allocated.merge(demand, on=["CCRID", "MONTH_NUMBER"], how="left")
+    """Join allocated supply with demand and compute gaps.
+
+    Uses baseline demand for BASE_GAP and scenario-specific demand
+    (with exclusions removed / additions included) for SCENARIO_GAP.
+    """
+    # Baseline demand
+    df = allocated.merge(
+        base_demand, on=["CCRID", "MONTH_NUMBER"], how="left"
+    )
     df["DEMAND_HOURS"] = df["DEMAND_HOURS"].fillna(0)
+
+    # Scenario demand — use MONTH_START when available for date precision
+    has_dates = "MONTH_START" in scenario_demand.columns
+    scen_dem_key = ["CCRID", "MONTH_START"] if has_dates else ["CCRID", "MONTH_NUMBER"]
+    scen_dem_cols = scen_dem_key + ["DEMAND_HOURS"]
+    scen_dem = scenario_demand[scen_dem_cols].rename(
+        columns={"DEMAND_HOURS": "SCENARIO_DEMAND_HOURS"}
+    )
+    df = df.merge(scen_dem, on=scen_dem_key, how="left")
+    df["SCENARIO_DEMAND_HOURS"] = df["SCENARIO_DEMAND_HOURS"].fillna(0)
 
     df["BASE_GAP_HOURS"] = df["BASE_PROJECT_SUPPLY_HOURS"] - df["DEMAND_HOURS"]
     df["SCENARIO_GAP_HOURS"] = (
-        df["SCENARIO_PROJECT_SUPPLY_HOURS"] - df["DEMAND_HOURS"]
+        df["SCENARIO_PROJECT_SUPPLY_HOURS"] - df["SCENARIO_DEMAND_HOURS"]
     )
     df["SUPPLY_DELTA_HOURS"] = (
         df["SCENARIO_PROJECT_SUPPLY_HOURS"] - df["BASE_PROJECT_SUPPLY_HOURS"]
@@ -274,6 +364,7 @@ def _assemble_output(
             "SCENARIO_PROJECT_SUPPLY_HOURS": "SCENARIO_SUPPLY",
             "SUPPLY_DELTA_HOURS": "SUPPLY_DELTA",
             "DEMAND_HOURS": "DEMAND",
+            "SCENARIO_DEMAND_HOURS": "SCENARIO_DEMAND",
             "BASE_GAP_HOURS": "BASE_GAP",
             "SCENARIO_GAP_HOURS": "SCENARIO_GAP",
         }
@@ -306,12 +397,14 @@ def _build_custom_demand_and_weights(
         total_working_days = max(eligible["BUSINESS_DAYS"].sum(), 1)
         for _, wd_row in eligible.iterrows():
             month_num = wd_row["MONTH_NUMBER"]
+            month_start = wd_row["MONTH_START"]
             monthly_demand = scenario_demand * (wd_row["BUSINESS_DAYS"] / total_working_days)
             demand_rows.append(
                 {
                     "CCRID": proj["CCRID"],
                     "PROJECT_NAME": proj["PROJECT_NAME"],
                     "MONTH_NUMBER": month_num,
+                    "MONTH_START": month_start,
                     "DEMAND_HOURS": round(monthly_demand, 1),
                 }
             )
@@ -320,17 +413,18 @@ def _build_custom_demand_and_weights(
                     "CCRID": proj["CCRID"],
                     "REGION": proj["REGION"],
                     "MONTH_NUMBER": month_num,
+                    "MONTH_START": month_start,
                     "ALLOCATION": 0.0,  # placeholder; recalculated later
                 }
             )
     demand_df = (
         pd.DataFrame(demand_rows)
         if demand_rows
-        else pd.DataFrame(columns=["CCRID", "PROJECT_NAME", "MONTH_NUMBER", "DEMAND_HOURS"])
+        else pd.DataFrame(columns=["CCRID", "PROJECT_NAME", "MONTH_NUMBER", "MONTH_START", "DEMAND_HOURS"])
     )
     weights_df = (
         pd.DataFrame(weight_rows)
         if weight_rows
-        else pd.DataFrame(columns=["CCRID", "REGION", "MONTH_NUMBER", "ALLOCATION"])
+        else pd.DataFrame(columns=["CCRID", "REGION", "MONTH_NUMBER", "MONTH_START", "ALLOCATION"])
     )
     return demand_df, weights_df

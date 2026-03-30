@@ -26,6 +26,7 @@ def sample_df() -> pd.DataFrame:
             "BASE_SUPPLY": [1000.0, 1100.0],
             "SCENARIO_SUPPLY": [1200.0, 1300.0],
             "DEMAND": [800.0, 900.0],
+            "SCENARIO_DEMAND": [800.0, 900.0],
             "BASE_GAP": [200.0, 200.0],
             "SCENARIO_GAP": [400.0, 400.0],
             "SUPPLY_DELTA": [200.0, 200.0],
