@@ -24,8 +24,8 @@ def _get_connection() -> snowflake.connector.SnowflakeConnection:
     cfg = st.secrets["snowflake"]
     return snowflake.connector.connect(
         user=cfg["user"],
+        password=cfg.get("token", cfg.get("password", "")),
         account=cfg["account"],
-        authenticator=cfg.get("authenticator", "externalbrowser"),
         warehouse=cfg["warehouse"],
         role=cfg["role"],
         client_session_keep_alive=True,
