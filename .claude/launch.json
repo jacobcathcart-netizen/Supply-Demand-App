@@ -6,12 +6,6 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "streamlit", "run", "Home.py"],
       "port": 8501
-    },
-    {
-      "name": "dash-app",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["dash_app/app.py"],
-      "port": 8050
     }
   ]
 }
