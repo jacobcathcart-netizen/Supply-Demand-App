@@ -21,6 +21,7 @@ from config import (
     DEFAULT_SICK_DAYS_PER_YEAR,
     DEFAULT_START_DATE,
     DEFAULT_VAC_DAYS_PER_YEAR,
+    SWAT, 
 )
 from data.snowflake import (
     get_backlog,
@@ -33,7 +34,7 @@ from data.snowflake import (
 
 st.set_page_config(
     page_title="Inputs | CCR",
-    page_icon="⚡",
+    page_icon="assets/logo.jpg",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -51,6 +52,7 @@ _DEFAULTS: dict[str, object] = {
     "adjustment_start_date": None,
     "excluded_projects": [],
     "custom_projects": [],
+    "swat_allocation": [],
 }
 for key, val in _DEFAULTS.items():
     st.session_state.setdefault(key, val)
@@ -165,13 +167,27 @@ with tab_params:
                     ),
                     step=1,
                 )
-
+                
             # Convert to monthly for internal storage
             vac_days_per_month = vac_days_per_year / 12
             sick_days_per_month = sick_days_per_year / 12
-
+            # Swat Allocation
+            section_header("Swat Allocation")
+            f1, = st.columns(1)
+            with f1:
+                swat_allocation = st.number_input(
+                    "Swat Headcount",
+                    min_value=0,
+                    value=int(
+                        round(
+                            _saved("swat_allocation",SWAT)
+                        )
+                    ),
+                    step=1
+                )
             # Backlog assumptions
             section_header("Backlog Assumptions")
+            
             b1, b2 = st.columns(2)
             with b1:
                 cm_assumption = st.number_input(
@@ -237,6 +253,7 @@ with tab_params:
                 "end_date": end_date,
                 "pm_assumption": pm_assumption,
                 "cm_assumption": cm_assumption,
+                "swat_allocation": swat_allocation
             },
             adjustments=adjustments,
         )

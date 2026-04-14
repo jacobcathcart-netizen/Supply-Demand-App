@@ -13,7 +13,7 @@ from data.snowflake import get_connection_info, get_regions_df, reset_connection
 
 st.set_page_config(
     page_title="Supply & Demand | CCR",
-    page_icon="⚡",
+    page_icon="assets/logo.jpg",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -25,7 +25,7 @@ st.markdown(
     f"""
     <div style="
         border-radius: 12px; overflow: hidden; margin-bottom: 2rem;
-        background: linear-gradient(135deg, {LIGHT_BLUE} 0%, {NAVY} 100%);
+        background: linear-gradient(167deg, {LIGHT_BLUE} 0%, {NAVY} 100%);
         padding: 3rem 2.5rem;
     ">
         <h1 style="border-bottom:none;color:white;font-family:Tahoma,Geneva,sans-serif;

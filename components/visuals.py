@@ -646,8 +646,8 @@ def sensitivity_tornado_chart(
     y_pos = range(len(names))
 
     # Bars extending left and right from base case
-    low_widths = [low - base_ending_backlog for low in lows]
-    high_widths = [high - base_ending_backlog for high in highs]
+    low_widths = [low - base_ending_backlog  for low in lows]
+    high_widths = [high - base_ending_backlog  for high in highs]
 
     ax.barh(
         y_pos,

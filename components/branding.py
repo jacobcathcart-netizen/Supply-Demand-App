@@ -12,7 +12,7 @@ _LOGO_PATH = _ASSETS_DIR / "logo.jpg"
 HERO_IMAGE_PATH = _ASSETS_DIR / "solar_farm.jpg"
 
 # ── CCR Brand Colors (official) ──────────────────────────────────────
-NAVY = "#0a3370"            # CCR Blue — primary
+NAVY = "#072d68"            # CCR Blue — primary
 LIGHT_BLUE = "#008bc1"      # CCR Light Blue — secondary / accents / actions
 YELLOW = "#f5ac1c"          # CCR Yellow — accent, CTAs, hover highlights
 LIGHT_GRAY = "#ebebeb"      # CCR Light Gray — backgrounds, dividers
@@ -27,7 +27,7 @@ GREEN = "#007647"
 
 # Warm neutrals
 WHITE = "#FFFFFF"
-WARM_WHITE = "#FAFAFA"      # Page background — barely warm
+WARM_WHITE = "#E6E5E5"      # Page background — barely warm
 GRAY_200 = "#D9DDE5"        # Borders
 DARK = "#0a2550"            # Sidebar bottom (darker CCR Blue shade)
 

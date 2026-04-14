@@ -24,7 +24,7 @@ from logic.sensitivity import run_sensitivity
 
 st.set_page_config(
     page_title="Results | CCR",
-    page_icon="⚡",
+    page_icon="assets/logo.jpg",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -59,6 +59,7 @@ def _run(
     pct_decrease: float,
     vac_days_per_month: float,
     sick_days_per_month: float,
+    swat_allocation: float,
     excluded_projects: tuple[tuple, ...] = (),
     custom_projects: tuple[tuple, ...] = (),
 ) -> pd.DataFrame:
@@ -85,6 +86,7 @@ def _run(
         pct_decrease=pct_decrease,
         vac_days_per_month=vac_days_per_month,
         sick_days_per_month=sick_days_per_month,
+        swat_allocation=swat_allocation,
         excluded_projects=excl_list if excl_list else None,
         custom_projects=custom_proj_list if custom_proj_list else None,
     )
@@ -111,6 +113,7 @@ with st.spinner("Running scenario..."):
         scenario_inputs["pct_decrease"],
         scenario_inputs["vac_days_per_month"],
         scenario_inputs["sick_days_per_month"],
+        scenario_inputs["swat_allocation"],
         excluded_projects=tuple(
             (p["CCRID"], p["EXCLUDE_FROM"]) for p in excluded_projects
         ),
@@ -354,6 +357,7 @@ with tab_sensitivity:
                 "pct_decrease": scenario_inputs["pct_decrease"],
                 "vac_days_per_month": scenario_inputs["vac_days_per_month"],
                 "sick_days_per_month": scenario_inputs["sick_days_per_month"],
+                "swat_allocation": scenario_inputs["swat_allocation"],
                 "excluded_projects": tuple(
                     (p["CCRID"], p["EXCLUDE_FROM"]) for p in excluded_projects
                 ),
