@@ -1,0 +1,346 @@
+/* ═══════════════════════════════════════════════════════════════════
+   CCR Enterprise Branding — Dash App
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── CSS Variables ─────────────────────────────────────────────────── */
+:root {
+    --ccr-navy:       #0a3370;
+    --ccr-light-blue: #008bc1;
+    --ccr-yellow:     #f5ac1c;
+    --ccr-light-gray: #ebebeb;
+    --ccr-gray:       #333333;
+    --ccr-teal:       #33CCA6;
+    --ccr-orange:     #F26419;
+    --ccr-gold:       #F9A620;
+    --ccr-white:      #FFFFFF;
+    --ccr-warm-white: #FAFAFA;
+    --ccr-gray-200:   #D9DDE5;
+    --ccr-dark:       #0a2550;
+}
+
+/* ── Global ────────────────────────────────────────────────────────── */
+html, body {
+    font-family: Tahoma, Geneva, sans-serif;
+    background-color: var(--ccr-warm-white);
+    color: var(--ccr-gray);
+    background-image:
+        linear-gradient(rgba(10,51,112,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(10,51,112,0.015) 1px, transparent 1px);
+    background-size: 40px 40px;
+}
+
+.page-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1.5rem 2rem 3rem;
+}
+
+/* ── Typography ────────────────────────────────────────────────────── */
+h1, h2, h3, .section-header {
+    font-family: Tahoma, Geneva, sans-serif;
+    color: var(--ccr-navy);
+    font-weight: 700;
+}
+h1 {
+    font-size: 1.8rem;
+    letter-spacing: -0.02em;
+    padding-bottom: 0.25rem;
+    border-bottom: 3px solid var(--ccr-light-blue);
+    margin-bottom: 1.5rem;
+}
+h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* ── Navbar links ──────────────────────────────────────────────────── */
+.nav-link-custom {
+    color: rgba(255,255,255,0.85) !important;
+    font-weight: 600;
+    font-family: Tahoma, Geneva, sans-serif;
+    padding: 0.5rem 1rem !important;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+.nav-link-custom:hover {
+    color: var(--ccr-yellow) !important;
+    background: rgba(255,255,255,0.08);
+}
+.nav-link-custom.active {
+    color: white !important;
+    border-bottom: 2px solid var(--ccr-light-blue);
+}
+
+/* ── Hero banner ───────────────────────────────────────────────────── */
+.hero-banner {
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+    background: linear-gradient(135deg, var(--ccr-light-blue) 0%, var(--ccr-navy) 100%);
+    padding: 3rem 2.5rem;
+}
+.hero-banner h1 {
+    border-bottom: none;
+    color: white;
+    font-size: 2.4rem;
+    margin-bottom: 0.5rem;
+}
+.hero-banner p {
+    color: rgba(255,255,255,0.85);
+    font-size: 1rem;
+    max-width: 600px;
+    margin: 0;
+}
+
+/* ── Cards ─────────────────────────────────────────────────────────── */
+.card, .kpi-card {
+    background: var(--ccr-white);
+    border: 1px solid var(--ccr-gray-200);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(10,51,112,0.06);
+    padding: 1rem 1.25rem;
+    transition: box-shadow 0.25s ease, border-left-color 0.25s ease;
+}
+.card:hover {
+    box-shadow: 0 4px 16px rgba(10,51,112,0.1);
+}
+
+/* ── KPI metric cards ──────────────────────────────────────────────── */
+.kpi-card {
+    border-left: 3px solid var(--ccr-light-blue);
+    border-radius: 2px 10px 10px 2px;
+}
+.kpi-card:hover {
+    box-shadow: 0 4px 16px rgba(10,51,112,0.1);
+    border-left-color: var(--ccr-yellow);
+}
+.kpi-label {
+    color: var(--ccr-gray);
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.25rem;
+}
+.kpi-value {
+    color: var(--ccr-navy);
+    font-weight: 700;
+    font-size: 1.35rem;
+}
+.kpi-delta {
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 0.15rem;
+}
+.kpi-delta.positive { color: #28a745; }
+.kpi-delta.negative { color: #dc3545; }
+
+/* ── Status badge ──────────────────────────────────────────────────── */
+.status-badge {
+    border: 1.5px solid var(--ccr-light-blue);
+    color: var(--ccr-light-blue);
+    background: transparent;
+    padding: 0.15rem 0.65rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    display: inline-block;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────── */
+.btn-ccr-primary {
+    background: linear-gradient(135deg, var(--ccr-light-blue) 0%, var(--ccr-navy) 100%);
+    color: var(--ccr-white);
+    border: none;
+    border-radius: 8px;
+    padding: 0.6rem 1.5rem;
+    font-weight: 600;
+    font-family: Tahoma, Geneva, sans-serif;
+    box-shadow: 0 2px 8px rgba(0,139,193,0.3);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    width: 100%;
+}
+.btn-ccr-primary:hover {
+    box-shadow: 0 4px 16px rgba(0,139,193,0.4);
+    transform: translateY(-1px);
+    color: var(--ccr-white);
+}
+.btn-ccr-secondary {
+    background: transparent;
+    color: var(--ccr-gray);
+    border: 1px solid var(--ccr-gray-200);
+    border-radius: 8px;
+    padding: 0.6rem 1.5rem;
+    font-weight: 600;
+    font-family: Tahoma, Geneva, sans-serif;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    width: 100%;
+}
+.btn-ccr-secondary:hover {
+    border-color: var(--ccr-light-blue);
+    color: var(--ccr-light-blue);
+}
+
+/* ── Tabs ──────────────────────────────────────────────────────────── */
+.custom-tabs .tab {
+    font-family: Tahoma, Geneva, sans-serif;
+    font-weight: 600;
+    color: var(--ccr-gray);
+    border-bottom: 2px solid transparent;
+    padding: 0.6rem 1.5rem;
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+.custom-tabs .tab--selected {
+    color: var(--ccr-navy) !important;
+    font-weight: 700;
+    border-bottom-color: var(--ccr-light-blue) !important;
+}
+
+/* ── Form inputs ───────────────────────────────────────────────────── */
+.dash-input, .Select-control {
+    border-radius: 8px !important;
+    border: 1px solid var(--ccr-gray-200) !important;
+    font-family: Tahoma, Geneva, sans-serif !important;
+}
+.dash-input:focus {
+    border-color: var(--ccr-light-blue) !important;
+    box-shadow: 0 0 0 2px rgba(0,139,193,0.15) !important;
+}
+label {
+    font-family: Tahoma, Geneva, sans-serif;
+    font-weight: 500;
+    color: var(--ccr-navy);
+    font-size: 0.85rem;
+}
+
+/* ── Section header ────────────────────────────────────────────────── */
+.section-header {
+    margin-bottom: 0.25rem;
+}
+.section-subtitle {
+    color: var(--ccr-gray);
+    font-size: 0.82rem;
+    margin-top: -0.1rem;
+    margin-bottom: 0.75rem;
+}
+
+/* ── Data table ────────────────────────────────────────────────────── */
+.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner th {
+    background-color: var(--ccr-navy) !important;
+    color: var(--ccr-white) !important;
+    font-family: Tahoma, Geneva, sans-serif;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner td {
+    font-family: Tahoma, Geneva, sans-serif;
+    font-size: 0.85rem;
+}
+.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner tr:nth-child(even) td {
+    background-color: #f5f6f8 !important;
+}
+
+/* ── Divider ───────────────────────────────────────────────────────── */
+hr {
+    border: none;
+    border-top: 1px solid var(--ccr-gray-200);
+    margin: 1.5rem 0;
+}
+
+/* ── Alerts / Info ─────────────────────────────────────────────────── */
+.alert-info-ccr {
+    background: #e7f5fb;
+    border: 1px solid var(--ccr-light-blue);
+    border-left: 4px solid var(--ccr-light-blue);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    color: var(--ccr-navy);
+    font-family: Tahoma, Geneva, sans-serif;
+}
+
+/* ── Quick-action card ─────────────────────────────────────────────── */
+.action-card {
+    background: var(--ccr-white);
+    border: 1px solid var(--ccr-gray-200);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    text-decoration: none;
+    display: block;
+    color: inherit;
+}
+.action-card:hover {
+    box-shadow: 0 4px 16px rgba(10,51,112,0.1);
+    transform: translateY(-2px);
+    text-decoration: none;
+    color: inherit;
+}
+.action-card h3 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+.action-card p {
+    font-size: 0.82rem;
+    color: var(--ccr-gray);
+    margin: 0;
+}
+
+/* ── Animations ────────────────────────────────────────────────────── */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.page-container {
+    animation: fadeInUp 0.4s ease-out;
+}
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+.kpi-card {
+    animation: slideIn 0.3s ease-out both;
+}
+.kpi-card:nth-child(1) { animation-delay: 0.05s; }
+.kpi-card:nth-child(2) { animation-delay: 0.1s; }
+.kpi-card:nth-child(3) { animation-delay: 0.15s; }
+.kpi-card:nth-child(4) { animation-delay: 0.2s; }
+
+/* ── Accessibility focus ring ──────────────────────────────────────── */
+*:focus-visible {
+    outline: 2px solid var(--ccr-light-blue);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* ── Download button ───────────────────────────────────────────────── */
+.btn-download {
+    border: 1px solid var(--ccr-light-blue);
+    color: var(--ccr-light-blue);
+    background: transparent;
+    border-radius: 8px;
+    padding: 0.4rem 1rem;
+    font-weight: 500;
+    font-family: Tahoma, Geneva, sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.btn-download:hover {
+    background: var(--ccr-light-blue);
+    color: var(--ccr-white);
+}
+
+/* ── Plotly graph ──────────────────────────────────────────────────── */
+.js-plotly-plot {
+    border-radius: 8px;
+}
