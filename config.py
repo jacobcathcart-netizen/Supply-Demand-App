@@ -18,6 +18,7 @@ DEFAULT_SICK_DAYS_PER_YEAR: Final[int] = 8
 DEFAULT_CM_HOURS: Final[int] = 14
 DEFAULT_PM_HOURS: Final[int] = 10
 HOURS_PER_DAY: Final[int] = 8
+SWAT: Final[int] = 0
 
 # ── Sensitivity defaults (absolute deltas) ────────────────────────
 SENSITIVITY_PCT_DECREASE: Final[int] = 5        # ±5 percentage points
@@ -65,6 +66,7 @@ def build_demo_preset() -> dict:
             "sick_days_per_month": DEFAULT_SICK_DAYS_PER_YEAR / 12,
             "pm_assumption": DEFAULT_PM_HOURS,
             "cm_assumption": DEFAULT_CM_HOURS,
+            "swat_allocation": SWAT,
         },
         "selected_regions": list(DEMO_REGIONS),
         "adjustments": adjustments,
@@ -89,6 +91,7 @@ class ScenarioInputs:
     selected_regions: tuple[str, ...] = field(default_factory=tuple)
     adjustment_start_date: date | None = None
     adjustments: dict[str, int] = field(default_factory=dict)
+    swat_allocation: float = SWAT
 
     def __post_init__(self) -> None:
         if self.adjustment_start_date is None:

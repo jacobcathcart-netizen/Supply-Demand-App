@@ -53,6 +53,7 @@ def run_scenario(
     pct_decrease: float,
     vac_days_per_month: float,
     sick_days_per_month: float,
+    swat_allocation: float = 0,
     excluded_projects: list[dict] | None = None,
     custom_projects: list[dict] | None = None,
 ) -> pd.DataFrame:
@@ -97,6 +98,7 @@ def run_scenario(
         adjustment_start_date=adjustment_start_date,
         pct_decrease=pct_decrease,
         absence_days=float(vac_days_per_month) + float(sick_days_per_month),
+        swat_allocation=swat_allocation,
     )
 
     base_weights = _prepare_weights()
@@ -204,6 +206,7 @@ def _expand_supply(
     adjustment_start_date: date,
     pct_decrease: float,
     absence_days: float,
+    swat_allocation: float = 0,
 ) -> pd.DataFrame:
     """Cross-join months × regions, then compute supply hours."""
     df = (
@@ -216,10 +219,10 @@ def _expand_supply(
     adj_start = pd.to_datetime(adjustment_start_date)
 
     # Headcount
-    df["BASE_HEADCOUNT"] = df["COUNT"]
-    df["SCENARIO_HEADCOUNT"] = df["COUNT"]
+    df["BASE_HEADCOUNT"] = df["COUNT"] + swat_allocation
+    df["SCENARIO_HEADCOUNT"] = df["BASE_HEADCOUNT"]
     mask = df["MONTH_START"] >= adj_start
-    df.loc[mask, "SCENARIO_HEADCOUNT"] = df["COUNT"] + df["ADJUSTMENT"]
+    df.loc[mask, "SCENARIO_HEADCOUNT"] = df["BASE_HEADCOUNT"] + df["ADJUSTMENT"]
 
     # Available days after absences
     df["NET_BUSINESS_DAYS"] = (df["BUSINESS_DAYS"] - absence_days).clip(lower=0)
