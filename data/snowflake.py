@@ -1,74 +1,43 @@
 """Snowflake data-access functions.
 
-Every public function returns a pandas DataFrame and uses TTL-based
-caching so repeated calls within the window are free.
+Every public function returns a pandas DataFrame and uses Streamlit
+caching so repeated calls within the TTL window are free.
 """
 
 from __future__ import annotations
 
-import os
-import time
 from datetime import date
-from functools import wraps
 from typing import Any
 
 import pandas as pd
 import snowflake.connector
+import streamlit as st
 
 from config import CACHE_TTL_SECONDS
 
-# ── TTL cache decorator (replaces @st.cache_data) ────────────────────
-
-def _ttl_cache(ttl: int = CACHE_TTL_SECONDS):
-    """Simple TTL cache for functions returning DataFrames."""
-    def decorator(fn):
-        _cache: dict[str, tuple[float, Any]] = {}
-
-        @wraps(fn)
-        def wrapper(*args, **kwargs):
-            key = f"{fn.__name__}:{args}:{kwargs}"
-            now = time.time()
-            if key in _cache:
-                ts, val = _cache[key]
-                if now - ts < ttl:
-                    return val
-            result = fn(*args, **kwargs)
-            _cache[key] = (now, result)
-            return result
-
-        wrapper.clear = lambda: _cache.clear()
-        return wrapper
-    return decorator
-
-
 # ── Connection management ───────────────────────────────────────────
 
-_connection: snowflake.connector.SnowflakeConnection | None = None
 
-
+@st.cache_resource(show_spinner=False)
 def _get_connection() -> snowflake.connector.SnowflakeConnection:
-    """Return a long-lived Snowflake connection (singleton)."""
-    global _connection
-    if _connection is not None:
-        try:
-            _connection.cursor().execute("SELECT 1")
-            return _connection
-        except Exception:
-            _connection = None
-
-    _connection = snowflake.connector.connect(
-        user=os.environ["SNOWFLAKE_USER"],
-        password=os.environ.get("SNOWFLAKE_PASSWORD", os.environ.get("SNOWFLAKE_TOKEN", "")),
-        account=os.environ["SNOWFLAKE_ACCOUNT"],
-        warehouse=os.environ["SNOWFLAKE_WAREHOUSE"],
-        role=os.environ["SNOWFLAKE_ROLE"],
+    """Return a long-lived, cached Snowflake connection."""
+    cfg = st.secrets["snowflake"]
+    return snowflake.connector.connect(
+        user=cfg["user"],
+        password=cfg.get("token", cfg.get("password", "")),
+        account=cfg["account"],
+        warehouse=cfg["warehouse"],
+        role=cfg["role"],
         client_session_keep_alive=True,
     )
-    return _connection
 
 
 def _fetch_df(query: str, params: tuple[Any, ...] | None = None) -> pd.DataFrame:
-    """Execute *query* and return results as a DataFrame."""
+    """Execute *query* and return results as a DataFrame.
+
+    Raises ``snowflake.connector.Error`` on failure so callers can
+    decide how to surface errors (e.g. ``st.error``).
+    """
     conn = _get_connection()
     with conn.cursor() as cur:
         cur.execute(query, params) if params else cur.execute(query)
@@ -77,25 +46,12 @@ def _fetch_df(query: str, params: tuple[Any, ...] | None = None) -> pd.DataFrame
 
 
 def reset_connection() -> None:
-    """Close the current connection and clear caches."""
-    global _connection
-    if _connection is not None:
-        try:
-            _connection.close()
-        except Exception:
-            pass
-        _connection = None
-
-
-def clear_data_cache() -> None:
-    """Clear all TTL caches."""
-    for fn in [
-        get_regions_df, get_supply, get_demand_weight, get_demand,
-        get_projects, get_cm_backlog, get_pm_backlog, get_backlog,
-        get_working_days,
-    ]:
-        if hasattr(fn, "clear"):
-            fn.clear()
+    """Close the current connection and clear the resource cache."""
+    try:
+        _get_connection().close()
+    except Exception:
+        pass
+    _get_connection.clear()
 
 
 # ── Query helpers ───────────────────────────────────────────────────
@@ -114,7 +70,7 @@ def get_connection_info() -> pd.DataFrame:
     )
 
 
-@_ttl_cache()
+@st.cache_data(show_spinner=False, ttl=CACHE_TTL_SECONDS)
 def get_regions_df() -> pd.DataFrame:
     """Distinct regions with current headcount."""
     return _fetch_df(
@@ -126,19 +82,19 @@ def get_regions_df() -> pd.DataFrame:
     )
 
 
-@_ttl_cache()
+@st.cache_data(show_spinner=False, ttl=CACHE_TTL_SECONDS)
 def get_supply() -> pd.DataFrame:
-    """Full supply table (region x month-number x headcount)."""
+    """Full supply table (region × month-number × headcount)."""
     return _fetch_df("SELECT * FROM SA.SUPPLY_DEMAND.SUPPLY")
 
 
-@_ttl_cache()
+@st.cache_data(show_spinner=False, ttl=CACHE_TTL_SECONDS)
 def get_demand_weight() -> pd.DataFrame:
     """Demand allocation weights per project / region / month."""
     return _fetch_df("SELECT * FROM SA.SUPPLY_DEMAND.DEMAND_WEIGHTS")
 
 
-@_ttl_cache()
+@st.cache_data(show_spinner=False, ttl=CACHE_TTL_SECONDS)
 def get_demand() -> pd.DataFrame:
     """Aggregated demand hours by project and month."""
     return _fetch_df(
@@ -156,7 +112,7 @@ def get_demand() -> pd.DataFrame:
 # ── Project dimension ──────────────────────────────────────────────
 
 
-@_ttl_cache()
+@st.cache_data(show_spinner=False, ttl=CACHE_TTL_SECONDS)
 def get_projects() -> pd.DataFrame:
     """Project dimension table with metadata."""
     return _fetch_df(
@@ -181,7 +137,7 @@ def get_projects() -> pd.DataFrame:
 # ── Backlog queries ─────────────────────────────────────────────────
 
 
-@_ttl_cache()
+@st.cache_data(show_spinner=False, ttl=CACHE_TTL_SECONDS)
 def get_cm_backlog() -> pd.DataFrame:
     """Corrective-maintenance backlog by region / project."""
     return _fetch_df(
@@ -192,7 +148,7 @@ def get_cm_backlog() -> pd.DataFrame:
     )
 
 
-@_ttl_cache()
+@st.cache_data(show_spinner=False, ttl=CACHE_TTL_SECONDS)
 def get_pm_backlog() -> pd.DataFrame:
     """Preventive-maintenance backlog by region / project."""
     return _fetch_df(
@@ -203,7 +159,7 @@ def get_pm_backlog() -> pd.DataFrame:
     )
 
 
-@_ttl_cache()
+@st.cache_data(show_spinner=False, ttl=CACHE_TTL_SECONDS)
 def get_backlog(pm_hours: int, cm_hours: int) -> pd.DataFrame:
     """Combined PM + CM backlog by region and project, converted to hours."""
     return _fetch_df(
@@ -225,7 +181,7 @@ def get_backlog(pm_hours: int, cm_hours: int) -> pd.DataFrame:
 # ── Calendar ────────────────────────────────────────────────────────
 
 
-@_ttl_cache()
+@st.cache_data(show_spinner=False, ttl=CACHE_TTL_SECONDS)
 def get_working_days(start_date: date, end_date: date) -> pd.DataFrame:
     """Business days per month (excludes weekends and NetSuite holidays)."""
     return _fetch_df(

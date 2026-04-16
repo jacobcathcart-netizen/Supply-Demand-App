@@ -14,7 +14,7 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 
-from components.charts import _monthly_totals
+from components.visuals import _monthly_totals
 
 
 # ── Parameter definitions ────────────────────────────────────────────
