@@ -119,6 +119,16 @@ def run_scenario(
             month_map, on="MONTH_NUMBER", how="inner"
         )
 
+        # Capture original allocation totals before modifications.
+        # These totals anchor the post-recalculation scaling so that
+        # adding/removing projects does not inflate or deflate total supply.
+        orig_alloc_totals = (
+            scenario_weights
+            .groupby(["REGION", "MONTH_START"])["ALLOCATION"]
+            .sum()
+            .rename("_ORIG_ALLOC_TOTAL")
+        )
+
     if excluded_projects:
         excl_df = pd.DataFrame(excluded_projects)[["CCRID", "EXCLUDE_FROM"]]
         excl_df["EXCLUDE_FROM"] = (
@@ -164,7 +174,7 @@ def run_scenario(
     # Recalculate scenario weights only
     if has_modifications:
         scenario_weights = _recalculate_weights_from_demand(
-            scenario_weights, scenario_demand
+            scenario_weights, scenario_demand, orig_alloc_totals
         )
 
     allocated = _allocate_to_projects(expanded, base_weights, scenario_weights)
@@ -249,11 +259,18 @@ def _prepare_weights() -> pd.DataFrame:
 def _recalculate_weights_from_demand(
     weights: pd.DataFrame,
     demand: pd.DataFrame,
+    orig_alloc_totals: pd.Series | None = None,
 ) -> pd.DataFrame:
     """Recalculate ALLOCATION as each project's share of regional demand.
 
     Uses MONTH_START as the time key when present (multi-year scenarios),
     otherwise falls back to MONTH_NUMBER.
+
+    When *orig_alloc_totals* is provided (a Series indexed by
+    [REGION, month_col] with the pre-modification allocation sums),
+    the recalculated weights are scaled so that each group's total
+    matches the original.  This prevents adding or removing projects
+    from inflating or deflating total allocated supply.
     """
     has_dates = "MONTH_START" in weights.columns
     month_col = "MONTH_START" if has_dates else "MONTH_NUMBER"
@@ -269,6 +286,17 @@ def _recalculate_weights_from_demand(
         "DEMAND_HOURS"
     ].transform("sum")
     merged["ALLOCATION"] = merged["DEMAND_HOURS"] / group_total.replace(0, 1)
+
+    if orig_alloc_totals is not None:
+        orig_df = orig_alloc_totals.reset_index()
+        merged = merged.merge(orig_df, on=["REGION", month_col], how="left")
+        new_group_total = merged.groupby(["REGION", month_col])[
+            "ALLOCATION"
+        ].transform("sum")
+        merged["ALLOCATION"] *= (
+            merged["_ORIG_ALLOC_TOTAL"].fillna(0) / new_group_total.replace(0, 1)
+        )
+        merged = merged.drop(columns="_ORIG_ALLOC_TOTAL")
 
     return merged.drop(columns="DEMAND_HOURS")
 
@@ -352,6 +380,19 @@ def _assemble_output(
     )
     df = df.merge(scen_dem, on=scen_dem_key, how="left")
     df["SCENARIO_DEMAND_HOURS"] = df["SCENARIO_DEMAND_HOURS"].fillna(0)
+
+    # Fill PROJECT_NAME for custom projects (not present in base_demand)
+    if df["PROJECT_NAME"].isna().any() and "PROJECT_NAME" in scenario_demand.columns:
+        name_lookup = scenario_demand[["CCRID", "PROJECT_NAME"]].drop_duplicates(
+            subset="CCRID"
+        )
+        df = df.merge(
+            name_lookup.rename(columns={"PROJECT_NAME": "_SCEN_NAME"}),
+            on="CCRID",
+            how="left",
+        )
+        df["PROJECT_NAME"] = df["PROJECT_NAME"].fillna(df["_SCEN_NAME"])
+        df = df.drop(columns="_SCEN_NAME")
 
     df["BASE_GAP_HOURS"] = df["BASE_PROJECT_SUPPLY_HOURS"] - df["DEMAND_HOURS"]
     df["SCENARIO_GAP_HOURS"] = (

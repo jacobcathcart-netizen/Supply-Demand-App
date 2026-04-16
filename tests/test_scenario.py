@@ -255,6 +255,35 @@ class TestRecalculateWeightsFromDemand:
         p001_m1 = result[(result["CCRID"] == "P001") & (result["MONTH_NUMBER"] == 1)]
         assert p001_m1["ALLOCATION"].iloc[0] == pytest.approx(0.625)
 
+    def test_scaling_preserves_original_totals(self):
+        """When orig_alloc_totals is provided, group sums should match original."""
+        weights = pd.DataFrame(
+            {
+                "CCRID": ["P001", "P002", "P003"],
+                "REGION": ["East", "East", "East"],
+                "MONTH_NUMBER": [1, 1, 1],
+                "ALLOCATION": [0.4, 0.3, 0.1],  # sums to 0.8
+            }
+        )
+        demand = pd.DataFrame(
+            {
+                "CCRID": ["P001", "P002", "P003"],
+                "MONTH_NUMBER": [1, 1, 1],
+                "DEMAND_HOURS": [400, 300, 100],
+            }
+        )
+        orig_totals = pd.Series(
+            [0.8],
+            index=pd.MultiIndex.from_tuples(
+                [("East", 1)], names=["REGION", "MONTH_NUMBER"]
+            ),
+            name="_ORIG_ALLOC_TOTAL",
+        )
+        result = _recalculate_weights_from_demand(weights, demand, orig_totals)
+        assert result.groupby(["REGION", "MONTH_NUMBER"])[
+            "ALLOCATION"
+        ].sum().iloc[0] == pytest.approx(0.8)
+
     def test_no_change_when_all_projects_included(self):
         weights = pd.DataFrame(
             {
@@ -537,3 +566,204 @@ class TestCustomProjectReceivesSupply:
         custom_rows = result_custom[result_custom["CCRID"] == "CUSTOM_001"]
         assert not custom_rows.empty
         assert custom_rows["SCENARIO_SUPPLY"].sum() > 0
+
+    def test_custom_project_has_project_name(self):
+        """Custom projects should have PROJECT_NAME in output, not NaN."""
+        supply_df = pd.DataFrame(
+            {
+                "REGION": ["East", "East"],
+                "MONTH_NUMBER": [1, 2],
+                "COUNT": [10, 10],
+            }
+        )
+        working_days_df = pd.DataFrame(
+            {
+                "MONTH_START": pd.to_datetime(["2025-01-01", "2025-02-01"]),
+                "BUSINESS_DAYS": [22, 20],
+            }
+        )
+        weights_df = pd.DataFrame(
+            {
+                "SERVICE_REGION_ST": ["East", "East"],
+                "CCRID": ["P001", "P001"],
+                "MONTH_NUMBER": [1, 2],
+                "ALLOCATION": [1.0, 1.0],
+            }
+        )
+        demand_df = pd.DataFrame(
+            {
+                "CCRID": ["P001", "P001"],
+                "PROJECT_NAME": ["Alpha", "Alpha"],
+                "MONTH_NUMBER": [1, 2],
+                "HOURS": [500, 500],
+            }
+        )
+
+        custom = [
+            {
+                "CCRID": "CUSTOM_001",
+                "PROJECT_NAME": "NewProject",
+                "REGION": "East",
+                "TOTAL_HOURS": 1000,
+                "START_DATE": "2025-01-01",
+            }
+        ]
+
+        with (
+            patch("logic.scenario.get_supply", return_value=supply_df),
+            patch("logic.scenario.get_working_days", return_value=working_days_df),
+            patch("logic.scenario.get_demand_weight", return_value=weights_df),
+            patch("logic.scenario.get_demand", return_value=demand_df),
+        ):
+            result = run_scenario(
+                regions=["East"],
+                adjustments={"East": 0},
+                start_date=date(2025, 1, 1),
+                end_date=date(2025, 2, 28),
+                adjustment_start_date=date(2025, 1, 1),
+                pct_decrease=0.0,
+                vac_days_per_month=0,
+                sick_days_per_month=0,
+                custom_projects=custom,
+            )
+
+        custom_rows = result[result["CCRID"] == "CUSTOM_001"]
+        assert not custom_rows["PROJECT_NAME"].isna().any()
+        assert custom_rows["PROJECT_NAME"].iloc[0] == "NewProject"
+
+
+class TestWeightScalingPreservesTotal:
+    """When base weights don't sum to 1.0, modifications must preserve the original sum."""
+
+    def test_custom_project_preserves_sub_unity_total(self):
+        """Adding a project when base weights sum to 0.8 should not change total supply."""
+        supply_df = pd.DataFrame(
+            {
+                "REGION": ["East", "East"],
+                "MONTH_NUMBER": [1, 2],
+                "COUNT": [10, 10],
+            }
+        )
+        working_days_df = pd.DataFrame(
+            {
+                "MONTH_START": pd.to_datetime(["2025-01-01", "2025-02-01"]),
+                "BUSINESS_DAYS": [22, 20],
+            }
+        )
+        # Weights sum to 0.8 per (region, month) — not 1.0
+        weights_df = pd.DataFrame(
+            {
+                "SERVICE_REGION_ST": ["East", "East", "East", "East"],
+                "CCRID": ["P001", "P002", "P001", "P002"],
+                "MONTH_NUMBER": [1, 1, 2, 2],
+                "ALLOCATION": [0.5, 0.3, 0.5, 0.3],
+            }
+        )
+        demand_df = pd.DataFrame(
+            {
+                "CCRID": ["P001", "P001", "P002", "P002"],
+                "PROJECT_NAME": ["Alpha", "Alpha", "Beta", "Beta"],
+                "MONTH_NUMBER": [1, 2, 1, 2],
+                "HOURS": [500, 500, 300, 300],
+            }
+        )
+
+        custom = [
+            {
+                "CCRID": "CUSTOM_001",
+                "PROJECT_NAME": "NewProject",
+                "REGION": "East",
+                "TOTAL_HOURS": 200,
+                "START_DATE": "2025-01-01",
+            }
+        ]
+
+        common_kwargs = dict(
+            regions=["East"],
+            adjustments={"East": 0},
+            start_date=date(2025, 1, 1),
+            end_date=date(2025, 2, 28),
+            adjustment_start_date=date(2025, 1, 1),
+            pct_decrease=0.0,
+            vac_days_per_month=0,
+            sick_days_per_month=0,
+        )
+
+        with (
+            patch("logic.scenario.get_supply", return_value=supply_df),
+            patch("logic.scenario.get_working_days", return_value=working_days_df),
+            patch("logic.scenario.get_demand_weight", return_value=weights_df),
+            patch("logic.scenario.get_demand", return_value=demand_df),
+        ):
+            result_base = run_scenario(**common_kwargs)
+            result_custom = run_scenario(**common_kwargs, custom_projects=custom)
+
+        # Total scenario supply must not change
+        assert result_base["SCENARIO_SUPPLY"].sum() == pytest.approx(
+            result_custom["SCENARIO_SUPPLY"].sum(), abs=0.2
+        )
+
+        # Custom project should still receive supply
+        custom_rows = result_custom[result_custom["CCRID"] == "CUSTOM_001"]
+        assert not custom_rows.empty
+        assert custom_rows["SCENARIO_SUPPLY"].sum() > 0
+
+    def test_exclusion_preserves_sub_unity_total(self):
+        """Excluding a project when base weights sum to 0.8 should not change total supply."""
+        supply_df = pd.DataFrame(
+            {
+                "REGION": ["East", "East"],
+                "MONTH_NUMBER": [1, 2],
+                "COUNT": [10, 10],
+            }
+        )
+        working_days_df = pd.DataFrame(
+            {
+                "MONTH_START": pd.to_datetime(["2025-01-01", "2025-02-01"]),
+                "BUSINESS_DAYS": [22, 20],
+            }
+        )
+        weights_df = pd.DataFrame(
+            {
+                "SERVICE_REGION_ST": ["East", "East", "East", "East"],
+                "CCRID": ["P001", "P002", "P001", "P002"],
+                "MONTH_NUMBER": [1, 1, 2, 2],
+                "ALLOCATION": [0.5, 0.3, 0.5, 0.3],
+            }
+        )
+        demand_df = pd.DataFrame(
+            {
+                "CCRID": ["P001", "P001", "P002", "P002"],
+                "PROJECT_NAME": ["Alpha", "Alpha", "Beta", "Beta"],
+                "MONTH_NUMBER": [1, 2, 1, 2],
+                "HOURS": [500, 500, 300, 300],
+            }
+        )
+
+        excluded = [{"CCRID": "P002", "EXCLUDE_FROM": "2025-01-01"}]
+
+        common_kwargs = dict(
+            regions=["East"],
+            adjustments={"East": 0},
+            start_date=date(2025, 1, 1),
+            end_date=date(2025, 2, 28),
+            adjustment_start_date=date(2025, 1, 1),
+            pct_decrease=0.0,
+            vac_days_per_month=0,
+            sick_days_per_month=0,
+        )
+
+        with (
+            patch("logic.scenario.get_supply", return_value=supply_df),
+            patch("logic.scenario.get_working_days", return_value=working_days_df),
+            patch("logic.scenario.get_demand_weight", return_value=weights_df),
+            patch("logic.scenario.get_demand", return_value=demand_df),
+        ):
+            result_base = run_scenario(**common_kwargs)
+            result_excl = run_scenario(**common_kwargs, excluded_projects=excluded)
+
+        # Total scenario supply must not change (excluded project's share
+        # is redistributed to remaining projects)
+        assert result_base["SCENARIO_SUPPLY"].sum() == pytest.approx(
+            result_excl["SCENARIO_SUPPLY"].sum(), abs=0.2
+        )

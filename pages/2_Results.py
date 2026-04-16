@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
@@ -9,6 +10,7 @@ from components.branding import (
     apply_branding,
     section_header,
 )
+from components.export_pptx import build_presentation
 from components.visuals import (
     _monthly_totals,
     backlog_trend_chart,
@@ -226,11 +228,16 @@ c8.metric(
 
 # ── Charts (tabbed) ──────────────────────────────────────────────────
 
-region_label = "All Selected Regions" if region_filter == "All" else region_filter
+region_label = scenario_inputs.get("scenario_name", "Scenario")
 
 # Pre-compute monthly aggregations once — reused by all chart tabs
 base_monthly_no_backlog = _monthly_totals(filtered)
 base_monthly_with_backlog = _monthly_totals(filtered, backlog=backlog)
+
+# Sensitivity figures are generated conditionally inside their tab;
+# initialise references here so the export section can access them.
+fig_fan: object = None
+fig_tornado: object = None
 
 tab_baseline, tab_scenario, tab_gap, tab_backlog, tab_sensitivity = st.tabs(
     ["Baseline", "Scenario", "Gap Analysis", "Backlog Trend", "Sensitivity"]
@@ -243,7 +250,7 @@ with tab_baseline:
             f"Line chart: baseline supply ({filtered['BASE_SUPPLY'].sum():,.0f} hrs) "
             f"vs demand ({filtered['DEMAND'].sum():,.0f} hrs) over time for {region_label}."
         )
-        st.pyplot(fig1, clear_figure=True)
+        st.pyplot(fig1)
     else:
         st.info("No data to chart for the current filters.")
 
@@ -255,7 +262,7 @@ with tab_scenario:
             f"Line chart: scenario supply ({filtered['SCENARIO_SUPPLY'].sum():,.0f} hrs) "
             f"vs demand ({filtered[scen_demand_col].sum():,.0f} hrs) over time for {region_label}."
         )
-        st.pyplot(fig2, clear_figure=True)
+        st.pyplot(fig2)
     else:
         st.info("No data to chart for the current filters.")
 
@@ -268,7 +275,7 @@ with tab_gap:
             f"Bar chart: baseline gap ({base_gap:,.0f} hrs) vs scenario gap "
             f"({scen_gap:,.0f} hrs) by month for {region_label}."
         )
-        st.pyplot(fig3, clear_figure=True)
+        st.pyplot(fig3)
     else:
         st.info("No data to chart for the current filters.")
 
@@ -280,7 +287,7 @@ with tab_backlog:
             f"(squad-months) over time for {region_label}. "
             f"Ending backlog: {scenario_ending_backlog:,.0f} hrs."
         )
-        st.pyplot(fig4, clear_figure=True)
+        st.pyplot(fig4)
     else:
         st.info("No data to chart for the current filters.")
 
@@ -416,7 +423,7 @@ with tab_sensitivity:
                     f"when each input is varied independently. "
                     f"Base ending backlog: {sens_result.base_ending_backlog:,.0f} hrs."
                 )
-                st.pyplot(fig_fan, clear_figure=True)
+                st.pyplot(fig_fan)
 
             st.divider()
 
@@ -430,7 +437,7 @@ with tab_sensitivity:
                     "Bars show the impact of each input on ending backlog. "
                     "Wider bars indicate higher sensitivity."
                 )
-                st.pyplot(fig_tornado, clear_figure=True)
+                st.pyplot(fig_tornado)
 
             st.divider()
 
@@ -459,9 +466,58 @@ with tab_sensitivity:
                 use_container_width=True,
             )
 
-# ── Data table & download ──────────────────────────────────────────
+# ── Export & downloads ─────────────────────────────────────────────
 
-with st.expander(f"Detail Data ({len(filtered):,} of {len(df):,} rows)", expanded=False):
+st.divider()
+
+dl_col1, dl_col2 = st.columns(2)
+
+with dl_col1:
+    section_header("Export")
+    scenario_name = scenario_inputs.get("scenario_name", "Scenario")
+
+    # Collect KPI metrics for the PowerPoint
+    _pptx_metrics: dict[str, dict[str, str]] = {
+        "Baseline Supply": {"value": f"{filtered['BASE_SUPPLY'].sum():,.0f} hrs"},
+        "Scenario Supply": {"value": f"{filtered['SCENARIO_SUPPLY'].sum():,.0f} hrs"},
+        "Total Demand": {"value": f"{filtered['DEMAND'].sum():,.0f} hrs"},
+        "Supply Delta": {
+            "value": f"{supply_delta:,.0f} hrs",
+            "delta": f"{supply_delta:+,.0f} hrs",
+        },
+        "Baseline Gap": {"value": f"{filtered['BASE_GAP'].sum():,.0f} hrs"},
+        "Scenario Gap": {
+            "value": f"{filtered['SCENARIO_GAP'].sum():,.0f} hrs",
+            "delta": f"{gap_delta:+,.0f} vs baseline",
+        },
+        "Initial Backlog": {"value": f"{backlog:,.0f} hrs"},
+        "Ending Backlog": {
+            "value": f"{scenario_ending_backlog:,.0f} hrs",
+            "delta": f"{backlog_delta:+,.0f} hrs",
+        },
+    }
+
+    pptx_bytes = build_presentation(
+        scenario_name=scenario_name,
+        region_label=region_label,
+        metrics=_pptx_metrics,
+        fig_baseline=fig1,
+        fig_scenario=fig2,
+        fig_gap=fig3,
+        fig_backlog=fig4,
+        fig_sensitivity_fan=fig_fan,
+        fig_sensitivity_tornado=fig_tornado,
+    )
+
+    st.download_button(
+        "Download PowerPoint",
+        pptx_bytes,
+        file_name=f"{scenario_name.replace(' ', '_')}_results.pptx",
+        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    )
+
+with dl_col2:
+    section_header("Data")
     display_df = filtered.assign(DATE=filtered["DATE"].dt.strftime("%b %Y"))
 
     st.download_button(
@@ -471,4 +527,8 @@ with st.expander(f"Detail Data ({len(filtered):,} of {len(df):,} rows)", expande
         mime="text/csv",
     )
 
+with st.expander(f"Detail Data ({len(filtered):,} of {len(df):,} rows)", expanded=False):
     st.dataframe(display_df, hide_index=True, width="stretch")
+
+# ── Cleanup matplotlib figures to free memory ─────────────────────
+plt.close("all")
