@@ -1,0 +1,220 @@
+/* ── CCR Brand CSS for Dash ─────────────────────────────────────── */
+
+/* Global font */
+body, .dash-table, .Select-value-label, .Select-placeholder {
+    font-family: Tahoma, Geneva, sans-serif !important;
+}
+
+/* Page container */
+.page-container {
+    background-color: #E6E5E5;
+    background-image:
+        linear-gradient(rgba(10,51,112,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(10,51,112,0.015) 1px, transparent 1px);
+    background-size: 40px 40px;
+    min-height: calc(100vh - 60px);
+    padding: 1.5rem 0;
+}
+
+/* Navbar custom links */
+.nav-link-custom {
+    color: rgba(255,255,255,0.85) !important;
+    font-family: Tahoma, Geneva, sans-serif;
+    font-weight: 600;
+    padding: 0.5rem 1rem !important;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+.nav-link-custom:hover {
+    color: #f5ac1c !important;
+    background: rgba(255,255,255,0.08);
+}
+.nav-link-custom.active {
+    color: #FFFFFF !important;
+    background: rgba(0,139,193,0.2);
+    border-bottom: 2px solid #008bc1;
+}
+
+/* KPI Cards */
+.kpi-card {
+    background: #FFFFFF;
+    border: none;
+    border-left: 3px solid #008bc1;
+    border-radius: 2px 10px 10px 2px;
+    padding: 1rem 1.25rem;
+    box-shadow: 0 2px 8px rgba(10,51,112,0.06);
+    transition: box-shadow 0.25s ease, border-left-color 0.25s ease;
+    height: 100%;
+}
+.kpi-card:hover {
+    box-shadow: 0 4px 16px rgba(10,51,112,0.1);
+    border-left-color: #f5ac1c;
+}
+.kpi-label {
+    font-family: Tahoma, Geneva, sans-serif;
+    color: #333333;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.25rem;
+}
+.kpi-value {
+    font-family: Tahoma, Geneva, sans-serif;
+    color: #072d68;
+    font-weight: 700;
+    font-size: 1.3rem;
+    margin-bottom: 0.15rem;
+}
+.kpi-delta {
+    font-family: Tahoma, Geneva, sans-serif;
+    color: #333333;
+    font-size: 0.78rem;
+}
+
+/* Hero banner */
+.hero-banner {
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+    background: linear-gradient(167deg, #008bc1 0%, #072d68 100%);
+    padding: 3rem 2.5rem;
+}
+.hero-banner h1 {
+    border-bottom: none;
+    color: white;
+    font-family: Tahoma, Geneva, sans-serif;
+    font-weight: 700;
+    font-size: 2.4rem;
+    margin-bottom: 0.5rem;
+}
+.hero-banner p {
+    color: rgba(255,255,255,0.85);
+    font-size: 1rem;
+    max-width: 600px;
+    margin: 0;
+    font-family: Tahoma, Geneva, sans-serif;
+}
+
+/* Section headers */
+h1, h2, h3 {
+    font-family: Tahoma, Geneva, sans-serif;
+    color: #072d68;
+    font-weight: 600;
+}
+h1 {
+    font-weight: 700;
+    border-bottom: 3px solid #008bc1;
+    padding-bottom: 0.25rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Primary action buttons */
+.btn-ccr-primary {
+    background: linear-gradient(135deg, #008bc1 0%, #072d68 100%);
+    color: #FFFFFF;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,139,193,0.3);
+    font-family: Tahoma, Geneva, sans-serif;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.2s ease;
+}
+.btn-ccr-primary:hover {
+    box-shadow: 0 4px 16px rgba(0,139,193,0.4);
+    transform: translateY(-1px);
+    color: #FFFFFF;
+}
+
+/* Cards and containers */
+.card {
+    border: 1px solid #D9DDE5;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(10,51,112,0.06);
+}
+
+/* Tab styling */
+.nav-tabs .nav-link {
+    font-family: Tahoma, Geneva, sans-serif;
+    font-weight: 600;
+    color: #333333;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 6px 6px 0 0;
+    padding: 0.6rem 1.5rem;
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+.nav-tabs .nav-link.active {
+    color: #072d68 !important;
+    font-weight: 700;
+    border-bottom-color: #008bc1 !important;
+    background: transparent !important;
+}
+.nav-tabs .nav-link:hover {
+    color: #008bc1;
+}
+
+/* Form inputs */
+.form-control, .Select-control {
+    border-radius: 8px;
+    border: 1px solid #D9DDE5;
+    font-family: Tahoma, Geneva, sans-serif;
+}
+.form-control:focus {
+    border-color: #008bc1;
+    box-shadow: 0 0 0 2px rgba(0,139,193,0.15);
+}
+
+/* Labels */
+label {
+    font-family: Tahoma, Geneva, sans-serif;
+    font-weight: 500;
+    color: #072d68;
+    font-size: 0.85rem;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.page-container > .container-fluid {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+.kpi-card {
+    animation: slideIn 0.3s ease-out both;
+}
+
+/* Accessibility focus ring */
+*:focus-visible {
+    outline: 2px solid #008bc1;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* Download buttons */
+.btn-outline-info {
+    font-family: Tahoma, Geneva, sans-serif;
+    font-weight: 500;
+    border-radius: 8px;
+    border-color: #008bc1;
+    color: #008bc1;
+}
+.btn-outline-info:hover {
+    background: #008bc1;
+    color: #FFFFFF;
+}
+
+/* AG Grid overrides */
+.ag-theme-alpine {
+    --ag-border-radius: 8px;
+    --ag-header-background-color: #072d68;
+    --ag-header-foreground-color: #FFFFFF;
+    --ag-font-family: Tahoma, Geneva, sans-serif;
+}
