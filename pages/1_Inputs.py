@@ -265,15 +265,24 @@ with tab_params:
 
     # ── Run button ───────────────────────────────────────────────────
 
-    _, center, _ = st.columns([1, 2, 1])
-    with center:
+    left_btn, center_btn, right_btn = st.columns([1, 2, 1])
+    with center_btn:
         run = st.button("Run Scenario", type="primary", width="stretch")
+    with right_btn:
+        reset = st.button("Reset Inputs", width="stretch")
 
     if run:
         if not st.session_state["inputs_saved"]:
             st.warning("Save your inputs first before running the scenario.")
         else:
             st.switch_page("pages/2_Results.py")
+
+    if reset:
+        _SKIP_RESET = {"excluded_projects", "custom_projects"}
+        for key, val in _DEFAULTS.items():
+            if key not in _SKIP_RESET:
+                st.session_state[key] = val if not isinstance(val, list) else list(val)
+        st.rerun()
 
     # ── Backlog preview (collapsed) ──────────────────────────────────
 

@@ -257,6 +257,30 @@ def _line_chart(
         color=LIGHT_BLUE,
     )
 
+    # Data labels on first, middle, and last points
+    n = len(monthly)
+    label_indices = sorted({0, n // 2, n - 1}) if n >= 2 else [0]
+    for series_col, color in [
+        (supply_col, LIGHT_BLUE),
+        (demand_col, ORANGE),
+        (gap_col, NAVY),
+    ]:
+        for idx in label_indices:
+            x = monthly["DATE"].iloc[idx]
+            y = monthly[series_col].iloc[idx]
+            ax.annotate(
+                f"{y:,.0f}",
+                xy=(x, y),
+                xytext=(0, 8),
+                textcoords="offset points",
+                ha="center",
+                va="bottom",
+                fontsize=7.5,
+                fontweight="bold",
+                color=color,
+                zorder=5,
+            )
+
     # Zero line
     ax.axhline(0, linewidth=0.8, color=GRAY, linestyle="-", alpha=0.3)
 
@@ -630,6 +654,15 @@ def sensitivity_tornado_chart(
     if not param_results:
         return None
 
+    # Filter out parameters with no impact (zero range) — these add
+    # nothing to the chart and can produce a degenerate figure.
+    param_results = [
+        p for p in param_results
+        if abs(p.high_ending_backlog - p.low_ending_backlog) > 0.01
+    ]
+    if not param_results:
+        return None
+
     # Sort by total range (widest at top)
     sorted_params = sorted(
         param_results,
@@ -723,7 +756,8 @@ def sensitivity_tornado_chart(
         framealpha=0.0,
     )
 
-    return _finalize(fig)
+    fig.tight_layout()
+    return fig
 
 
 # ── Legacy wrapper (kept for backward compatibility) ─────────────────
