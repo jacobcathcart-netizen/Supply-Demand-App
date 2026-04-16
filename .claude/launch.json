@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "Streamlit App",
+      "name": "Dash App",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "streamlit", "run", "Home.py"],
-      "port": 8501
+      "runtimeArgs": ["app.py"],
+      "port": 8050
     }
   ]
 }
